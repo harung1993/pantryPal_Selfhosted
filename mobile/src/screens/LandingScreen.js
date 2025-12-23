@@ -47,12 +47,13 @@ export default function LandingScreen({ navigation }) {
           <Text style={styles.icon}>🥫</Text>
           <Text style={styles.title}>PantryPal</Text>
           <Text style={styles.subtitle}>Part of PalStack</Text>
+          <Text style={styles.tagline}>Never let food go to waste</Text>
         </View>
 
         <View style={styles.configCard}>
-          <Text style={styles.configTitle}>Connect to PantryPal</Text>
+          <Text style={styles.configTitle}>Connect to Your Server</Text>
           <Text style={styles.configSubtitle}>
-            Enter your PantryPal server URL
+            Enter your self-hosted PantryPal server URL
           </Text>
 
           <View style={styles.inputGroup}>
@@ -82,10 +83,17 @@ export default function LandingScreen({ navigation }) {
             <Text style={styles.continueButtonText}>Continue</Text>
           </TouchableOpacity>
 
-          <View style={styles.helperBox}>
-            <Text style={styles.helperText}>
-              💡 This is the URL where your PantryPal backend is running.{'\n'}
-              You can find this in your server setup or network settings.
+          <View style={styles.palstackBox}>
+            <Text style={styles.palstackTitle}>PalStack Mission</Text>
+            <Text style={styles.palstackQuote}>
+              "That's what pals do – they show up and help with the everyday stuff. At PalStack, we build simple, open-source tools that make life easier."
+            </Text>
+          </View>
+
+          <View style={styles.hostedBox}>
+            <Text style={styles.hostedText}>
+              🚀 Hosted version coming soon!{'\n'}
+              No server setup required.
             </Text>
           </View>
         </View>
@@ -95,13 +103,41 @@ export default function LandingScreen({ navigation }) {
 
   // Main landing view (after server is configured)
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Hero Section */}
       <View style={styles.hero}>
         <Text style={styles.icon}>🥫</Text>
         <Text style={styles.title}>PantryPal</Text>
         <Text style={styles.subtitle}>Part of PalStack</Text>
         <Text style={styles.tagline}>Never let food go to waste</Text>
+      </View>
+
+      {/* Mission Box */}
+      <View style={styles.missionBox}>
+        <Text style={styles.missionTitle}>PalStack Mission</Text>
+        <Text style={styles.missionText}>
+          "That's what pals do – they show up and help with the everyday stuff. At PalStack, we build simple, open-source tools that make life easier."
+        </Text>
+      </View>
+
+      {/* Features */}
+      <View style={styles.featuresBox}>
+        <View style={styles.featureRow}>
+          <Text style={styles.featureIcon}>📷</Text>
+          <Text style={styles.featureText}>Scan barcodes with your phone</Text>
+        </View>
+        <View style={styles.featureRow}>
+          <Text style={styles.featureIcon}>🔔</Text>
+          <Text style={styles.featureText}>Get notified about expiring items</Text>
+        </View>
+        <View style={styles.featureRow}>
+          <Text style={styles.featureIcon}>🏠</Text>
+          <Text style={styles.featureText}>Integrate with Home Assistant</Text>
+        </View>
+        <View style={styles.featureRow}>
+          <Text style={styles.featureIcon}>🔒</Text>
+          <Text style={styles.featureText}>Your data stays on your server</Text>
+        </View>
       </View>
 
       {/* Auth Buttons */}
@@ -117,8 +153,15 @@ export default function LandingScreen({ navigation }) {
           style={styles.loginButton}
           onPress={() => navigation.navigate('Login')}
         >
-          <Text style={styles.loginButtonText}>Login</Text>
+          <Text style={styles.loginButtonText}>I have an account</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Hosted Version Notice */}
+      <View style={styles.hostedNotice}>
+        <Text style={styles.hostedText}>
+          🚀 Hosted version coming soon! No server setup required.
+        </Text>
       </View>
 
       {/* Change Server Link */}
@@ -131,9 +174,9 @@ export default function LandingScreen({ navigation }) {
         }}
         style={styles.serverLinkContainer}
       >
-        <Text style={styles.serverLinkText}>Self-hosting? Configure server</Text>
+        <Text style={styles.serverLinkText}>← Change Server</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -141,6 +184,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primary,
+  },
+  content: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: spacing.xl,
   },
@@ -269,5 +315,84 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
     opacity: 0.7,
+  },
+  palstackBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.textPrimary,
+  },
+  palstackTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  palstackQuote: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    opacity: 0.9,
+    fontStyle: 'italic',
+    lineHeight: 20,
+  },
+  hostedBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  hostedText: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  missionBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.xl,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.textPrimary,
+  },
+  missionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  missionText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    opacity: 0.9,
+    fontStyle: 'italic',
+    lineHeight: 22,
+  },
+  featuresBox: {
+    marginBottom: spacing.xl,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  featureIcon: {
+    fontSize: 24,
+    marginRight: spacing.md,
+  },
+  featureText: {
+    fontSize: 16,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  hostedNotice: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.lg,
+    alignItems: 'center',
   },
 });

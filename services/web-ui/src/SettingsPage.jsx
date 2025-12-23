@@ -37,6 +37,17 @@ function SettingsPage({ onBack, currentUser, isDark }) {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
   const [adminLoading, setAdminLoading] = useState(false);
+
+  // Invite user state
+  const [inviteData, setInviteData] = useState({
+    username: '',
+    email: '',
+    full_name: '',
+    password: ''
+  });
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [inviteFormExpanded, setInviteFormExpanded] = useState(false);
   
   // API Keys state
   const [apiKeys, setApiKeys] = useState([]);
@@ -260,6 +271,53 @@ function SettingsPage({ onBack, currentUser, isDark }) {
       }
     } catch (error) {
       console.error('Failed to delete user:', error);
+    }
+  };
+
+  const handleInviteUser = async (e) => {
+    e.preventDefault();
+    setInviteMessage('');
+
+    if (!inviteData.username || !inviteData.email || !inviteData.password) {
+      setInviteMessage('❌ Please fill in all required fields');
+      return;
+    }
+
+    if (inviteData.password.length < 8) {
+      setInviteMessage('❌ Password must be at least 8 characters');
+      return;
+    }
+
+    setInviteLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(inviteData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setInviteMessage(`✅ User ${inviteData.username} created successfully!`);
+        setInviteData({ username: '', email: '', full_name: '', password: '' });
+        loadUsers();
+        loadStats();
+        setTimeout(() => {
+          setInviteMessage('');
+          setInviteFormExpanded(false);
+        }, 2000);
+      } else {
+        setInviteMessage(`❌ ${data.detail || 'Failed to create user'}`);
+      }
+    } catch (error) {
+      setInviteMessage('❌ Network error');
+    } finally {
+      setInviteLoading(false);
     }
   };
 
@@ -1497,7 +1555,202 @@ function SettingsPage({ onBack, currentUser, isDark }) {
                   <Users size={24} />
                   User Management
                 </h2>
+                <button
+                  onClick={() => setInviteFormExpanded(!inviteFormExpanded)}
+                  style={{
+                    padding: `${spacing.sm}px ${spacing.md}px`,
+                    borderRadius: borderRadius.md,
+                    border: `2px solid ${colors.primary}`,
+                    background: inviteFormExpanded ? colors.primary : 'transparent',
+                    color: inviteFormExpanded ? colors.textPrimary : colors.primary,
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: spacing.xs,
+                    fontSize: '14px',
+                  }}
+                >
+                  {inviteFormExpanded ? '✕ Close' : '➕ Invite User'}
+                </button>
               </div>
+
+              {/* Collapsible Invite User Form */}
+              {inviteFormExpanded && (
+                <div style={{
+                  marginBottom: spacing.lg,
+                  padding: spacing.lg,
+                  background: colors.background,
+                  borderRadius: borderRadius.md,
+                  border: `1px solid ${colors.border}`,
+                }}>
+                  <h3 style={{ marginTop: 0, color: colors.textPrimary }}>Create New User</h3>
+                  <p style={{ color: colors.textSecondary, fontSize: '14px', marginBottom: spacing.md }}>
+                    Create a new user account for your household
+                  </p>
+
+                  <form onSubmit={handleInviteUser}>
+                    <div style={{ marginBottom: spacing.md }}>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: spacing.sm,
+                        fontWeight: '600',
+                        color: colors.textPrimary,
+                        fontSize: '14px',
+                      }}>
+                        Username *
+                      </label>
+                      <input
+                        type="text"
+                        value={inviteData.username}
+                        onChange={(e) => setInviteData({ ...inviteData, username: e.target.value })}
+                        placeholder="username"
+                        autoCapitalize="none"
+                        style={{
+                          width: '100%',
+                          padding: spacing.md,
+                          borderRadius: borderRadius.md,
+                          border: `2px solid ${colors.border}`,
+                          backgroundColor: colors.card,
+                          color: colors.textPrimary,
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: spacing.md }}>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: spacing.sm,
+                        fontWeight: '600',
+                        color: colors.textPrimary,
+                        fontSize: '14px',
+                      }}>
+                        Email *
+                      </label>
+                      <input
+                        type="email"
+                        value={inviteData.email}
+                        onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                        placeholder="user@example.com"
+                        style={{
+                          width: '100%',
+                          padding: spacing.md,
+                          borderRadius: borderRadius.md,
+                          border: `2px solid ${colors.border}`,
+                          backgroundColor: colors.card,
+                          color: colors.textPrimary,
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: spacing.md }}>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: spacing.sm,
+                        fontWeight: '600',
+                        color: colors.textPrimary,
+                        fontSize: '14px',
+                      }}>
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        value={inviteData.full_name}
+                        onChange={(e) => setInviteData({ ...inviteData, full_name: e.target.value })}
+                        placeholder="John Doe"
+                        style={{
+                          width: '100%',
+                          padding: spacing.md,
+                          borderRadius: borderRadius.md,
+                          border: `2px solid ${colors.border}`,
+                          backgroundColor: colors.card,
+                          color: colors.textPrimary,
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ marginBottom: spacing.md }}>
+                      <label style={{
+                        display: 'block',
+                        marginBottom: spacing.sm,
+                        fontWeight: '600',
+                        color: colors.textPrimary,
+                        fontSize: '14px',
+                      }}>
+                        Password *
+                      </label>
+                      <input
+                        type="password"
+                        value={inviteData.password}
+                        onChange={(e) => setInviteData({ ...inviteData, password: e.target.value })}
+                        placeholder="Min 8 characters"
+                        style={{
+                          width: '100%',
+                          padding: spacing.md,
+                          borderRadius: borderRadius.md,
+                          border: `2px solid ${colors.border}`,
+                          backgroundColor: colors.card,
+                          color: colors.textPrimary,
+                        }}
+                      />
+                    </div>
+
+                    {inviteMessage && (
+                      <div style={{
+                        marginBottom: spacing.md,
+                        fontSize: '14px',
+                        padding: spacing.sm,
+                        borderRadius: borderRadius.sm,
+                        background: inviteMessage.includes('✅') ? '#d1fae5' : '#fee2e2',
+                        color: inviteMessage.includes('✅') ? '#065f46' : '#991b1b',
+                      }}>
+                        {inviteMessage}
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: spacing.sm }}>
+                      <button
+                        type="submit"
+                        disabled={inviteLoading}
+                        style={{
+                          flex: 1,
+                          padding: spacing.md,
+                          borderRadius: borderRadius.md,
+                          border: 'none',
+                          background: colors.primary,
+                          color: colors.textPrimary,
+                          fontWeight: 'bold',
+                          cursor: inviteLoading ? 'not-allowed' : 'pointer',
+                          opacity: inviteLoading ? 0.6 : 1,
+                          fontSize: '14px',
+                        }}
+                      >
+                        {inviteLoading ? '⏳ Creating...' : '✉️ Create User'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInviteFormExpanded(false);
+                          setInviteData({ username: '', email: '', full_name: '', password: '' });
+                          setInviteMessage('');
+                        }}
+                        style={{
+                          padding: spacing.md,
+                          borderRadius: borderRadius.md,
+                          border: `2px solid ${colors.border}`,
+                          background: 'transparent',
+                          color: colors.textSecondary,
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
 
               {adminLoading ? (
                 <div style={{ textAlign: 'center', padding: spacing.xl, color: colors.textSecondary }}>

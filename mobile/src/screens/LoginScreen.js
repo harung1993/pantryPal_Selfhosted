@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,14 +21,91 @@ import {
   getBiometricTypes,
   getBiometricName,
   saveCredentials,
-  setBiometricEnabled
+  setBiometricEnabled,
+  performBiometricLogin,
+  isBiometricEnabled
 } from '../services/biometricAuth';
+
+// Helper function to add timeout to fetch requests
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 3000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw error;
+  }
+};
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricName, setBiometricName] = useState('Biometric');
+
+  useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    const enabled = await isBiometricEnabled();
+    const supported = await isBiometricSupported();
+    const enrolled = await isBiometricEnrolled();
+
+    if (enabled && supported && enrolled) {
+      const types = await getBiometricTypes();
+      const name = getBiometricName(types);
+      setBiometricName(name);
+      setBiometricAvailable(true);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    setLoading(true);
+
+    try {
+      const result = await performBiometricLogin();
+
+      if (result.success && result.credentials) {
+        // Attempt to login with saved credentials
+        const baseURL = await getApiBaseUrl();
+        const response = await fetchWithTimeout(`${baseURL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(result.credentials)
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          await AsyncStorage.setItem('SESSION_TOKEN', data.session_token);
+          api.resetApiInstance();
+          onLoginSuccess(data.user);
+        } else {
+          Alert.alert('Login Failed', 'Saved credentials are invalid. Please sign in manually.');
+        }
+      } else {
+        Alert.alert('Authentication Failed', `${biometricName} authentication was cancelled or failed.`);
+      }
+    } catch (error) {
+      console.error('Biometric login error:', error);
+      Alert.alert('Error', 'Could not complete biometric login. Please try signing in manually.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const promptBiometricEnrollment = async (username, password) => {
     const supported = await isBiometricSupported();
@@ -75,7 +152,7 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
 
     try {
       const baseURL = await getApiBaseUrl();
-      const response = await fetch(`${baseURL}/api/auth/login`, {
+      const response = await fetchWithTimeout(`${baseURL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -187,6 +264,29 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
             )}
           </TouchableOpacity>
 
+          {biometricAvailable && (
+            <>
+              <View style={styles.dividerContainer}>
+                <View style={styles.divider} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.divider} />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.biometricButton, loading && styles.loginButtonDisabled]}
+                onPress={handleBiometricLogin}
+                disabled={loading}
+              >
+                <Text style={styles.biometricIcon}>
+                  {biometricName.includes('Face') ? '👤' : '👆'}
+                </Text>
+                <Text style={styles.biometricButtonText}>
+                  Sign in with {biometricName}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+
           <View style={styles.signupPrompt}>
             <Text style={styles.signupText}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
@@ -296,6 +396,42 @@ const styles = StyleSheet.create({
   },
   loginButtonText: {
     color: colors.textPrimary,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.lg,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  dividerText: {
+    marginHorizontal: spacing.md,
+    color: colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  biometricButton: {
+    backgroundColor: colors.background,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    ...shadows.medium,
+  },
+  biometricIcon: {
+    fontSize: 24,
+    marginRight: spacing.sm,
+  },
+  biometricButtonText: {
+    color: colors.primary,
     fontSize: 18,
     fontWeight: 'bold',
   },

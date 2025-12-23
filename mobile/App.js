@@ -24,6 +24,27 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
+// Helper function to add timeout to fetch requests
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 3000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw error;
+  }
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
@@ -41,7 +62,7 @@ export default function App() {
       // First, check what auth mode the server is in
       let status;
       try {
-        const statusResponse = await fetch(`${baseURL}/api/auth/status`, { timeout: 5000 });
+        const statusResponse = await fetchWithTimeout(`${baseURL}/api/auth/status`);
         status = await statusResponse.json();
         console.log('Auth status:', status);
       } catch (error) {
@@ -70,7 +91,7 @@ export default function App() {
         if (biometricResult.success && biometricResult.credentials) {
           // Attempt to login with saved credentials
           try {
-            const loginResponse = await fetch(`${baseURL}/api/auth/login`, {
+            const loginResponse = await fetchWithTimeout(`${baseURL}/api/auth/login`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(biometricResult.credentials)
@@ -99,7 +120,7 @@ export default function App() {
       if (sessionToken) {
         // Try to validate the session
         try {
-          const meResponse = await fetch(`${baseURL}/api/auth/me`, {
+          const meResponse = await fetchWithTimeout(`${baseURL}/api/auth/me`, {
             headers: {
               'Authorization': `Bearer ${sessionToken}`,
               'Content-Type': 'application/json'
@@ -155,9 +176,9 @@ export default function App() {
     try {
       const baseURL = await getApiBaseUrl();
       const sessionToken = await AsyncStorage.getItem('SESSION_TOKEN');
-      
+
       if (sessionToken) {
-        await fetch(`${baseURL}/api/auth/logout`, {
+        await fetchWithTimeout(`${baseURL}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${sessionToken}`,
@@ -168,12 +189,12 @@ export default function App() {
     } catch (error) {
       console.error('Logout error:', error);
     }
-    
+
     await AsyncStorage.removeItem('SESSION_TOKEN');
-    
+
     // Reset API instance on logout too
     api.resetApiInstance();
-    
+
     setCurrentUser(null);
     setIsAuthenticated(false);
     setNeedsAuth(true);
