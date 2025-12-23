@@ -41,13 +41,15 @@ This is the first of three household management tools I'm building as part of th
 ## Key Features
 
 ### For Everyday Use
-- **Barcode Scanning**: Quick item entry via mobile camera
+- **Barcode Scanning**: Quick item entry via mobile camera (supports food & household items)
 - **Manual Entry**: Add items without barcodes
 - **Expiry Tracking**: Know what's expiring before it goes bad
 - **Multi-User Support**: Family members can all access and update
 - **Beautiful Web Dashboard**: Minimal, clean interface with dark mode
-- **Mobile App**: Native iOS app with biometric authentication (Face ID/Touch ID)
-- **User Authentication**: Secure account-based access with session management
+- **Mobile App**: Native iOS app (distributed via TestFlight)
+- **Automated Backups**: Optional scheduled CSV backups with retention policy
+- **CSV Import/Export**: Easy data portability and disaster recovery
+- **Multi-Source Lookup**: Automatic fallback to multiple barcode databases for better coverage
 
 ### For Home Assistant Fans
 - **REST API Integration**: Pull pantry data into Home Assistant
@@ -158,7 +160,7 @@ nginx (reverse proxy)
 - Mobile: React Native + Expo
 - Database: SQLite (simple, portable, no setup)
 - Reverse Proxy: nginx
-- Barcode Data: Open Food Facts API
+- Barcode Data: Open Food Facts API + UPCitemDB (fallback for non-food items)
 
 ---
 
@@ -279,6 +281,152 @@ All three share the same philosophy:
 - **Family-focused**: Multi-user, easy for everyone to use
 - **Smart home ready**: Built with Home Assistant integration in mind
 - **Open source**: AGPL-3.0 for personal use
+- **Privacy-first**: Self-hosted, no cloud dependencies (because trust issues)
+- **Family-focused**: Multi-user, easy for everyone to use (even spouses who "just want a list")
+- **Smart home ready**: Built with Home Assistant integration in mind (because of course)
+- **Open source**: AGPL-3.0 for personal use (sharing is caring)
+- **Over-engineered**: Why use a spreadsheet when you can use Docker? 🤷‍♂️
+
+---
+
+## Mobile App Access
+
+The iOS app is distributed via TestFlight for family and early testers.
+
+**Request Access:**
+- Email: palstack4u@gmail.com
+- Subject: "PantryPal TestFlight Request"
+- Include: Your Apple ID email
+
+You'll receive an invitation within 24-48 hours.
+
+**Note:** This is a personal project for family use, not a commercial app. No App Store release is planned.
+
+---
+
+## Authentication Modes
+
+Configure `AUTH_MODE` in `docker-compose.yml`:
+
+| Mode | Best For | Home Network | External Access |
+|------|----------|--------------|-----------------|
+| **smart** | Most households | Open (no login) | Login required |
+| **none** | Single user only | Open | Open (insecure) |
+| **full** | Maximum security | Login required | Login required |
+| **api_key_only** | API integrations | API key only | API key only |
+
+**Recommended:** Use `smart` mode - it's open when you're home, secure when you're away.
+
+---
+
+## Barcode Lookup
+
+PantryPal uses multiple barcode databases to ensure maximum product coverage.
+
+### Supported Product Types
+
+- **Food Items**: Groceries, beverages, snacks, canned goods
+- **Cleaning Products**: Detergents, soaps, household cleaners
+- **Personal Care**: Beauty products, hygiene items
+- **Household Items**: Paper products, tissues, general household goods
+- **Health Products**: Vitamins, supplements, medicines
+
+### How It Works
+
+When you scan a barcode, PantryPal:
+1. Checks the local cache first (instant results)
+2. Queries Open Food Facts API (best for food items)
+3. Falls back to UPCitemDB API (for cleaning & household items)
+4. Caches results for 30 days to improve speed
+
+### If Product Not Found
+
+If a barcode isn't found in any database:
+- The app allows manual entry
+- You can add the product name, brand, category, and other details
+- It will be saved for future use
+
+This multi-source approach provides significantly better coverage than single-database systems, especially for non-food items like cleaning supplies that are often missing from food-focused databases.
+
+---
+
+## Automated Backups
+
+PantryPal includes optional automated CSV backups for disaster recovery.
+
+### Configuration
+
+In `docker-compose.yml` or `docker-compose-hub.yml`, configure the inventory service:
+
+```yaml
+inventory-service:
+  environment:
+    - BACKUP_ENABLED=true                 # Enable automated backups
+    - BACKUP_SCHEDULE=0 2 * * *          # Daily at 2 AM (cron format)
+    - BACKUP_RETENTION_DAYS=7             # Keep backups for 7 days
+    - BACKUP_PATH=/app/backups
+  volumes:
+    - ./backups:/app/backups              # Backup storage directory
+```
+
+### Backup Schedule Examples
+
+```bash
+# Daily at 2 AM
+BACKUP_SCHEDULE=0 2 * * *
+
+# Every 6 hours
+BACKUP_SCHEDULE=0 */6 * * *
+
+# Weekly on Sunday at 2 AM
+BACKUP_SCHEDULE=0 2 * * 0
+
+# Twice daily (2 AM and 2 PM)
+BACKUP_SCHEDULE=0 2,14 * * *
+```
+
+### Manual Export
+
+Export your data anytime via the web dashboard:
+1. Open PantryPal web UI
+2. Navigate to Inventory page
+3. Click "Export" button
+4. CSV file downloads automatically
+
+### Disaster Recovery
+
+If your database is lost or corrupted:
+1. Find the latest backup in `./backups/` directory
+2. Open PantryPal web UI
+3. Click "Import" on the Inventory page
+4. Select the backup CSV file
+5. All items are restored
+
+Backup files are named: `pantrypal_backup_YYYY-MM-DD_HHMMSS.csv`
+
+---
+
+## Built With AI Assistance
+
+This project was built with significant help from AI coding assistants:
+- **Claude** (Anthropic) - Primary development assistant
+- **Qwen** - Code review and optimization
+- **Gemini** (Google) - Architecture decisions
+
+Why mention this? Because in 2025, building useful software doesn't mean writing every line yourself. It means solving real problems efficiently. AI tools helped me go from "frustrated pantry shopper" to "working app" in weeks instead of months.
+
+---
+
+## Contributing
+
+This is a personal project built for my household, but:
+
+- 🐛 **Bug reports** are welcome via GitHub Issues
+- 💡 **Feature suggestions** appreciated
+- 🍴 **Forks encouraged** for personal customization
+- 🚫 **Commercial use** requires permission (see LICENSE)
+
+If PantryPal solves your household problem too, I'd love to hear about it!
 
 ---
 

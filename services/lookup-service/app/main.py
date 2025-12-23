@@ -93,14 +93,25 @@ def extract_category(categories_str: str) -> str:
         'vegetables': 'Fresh Produce',
         'condiments': 'Condiments',
         'sauces': 'Condiments',
+        'cleaning': 'Cleaning',
+        'detergent': 'Cleaning',
+        'soap': 'Cleaning',
+        'household': 'Household',
+        'paper': 'Household',
+        'tissue': 'Household',
+        'personal care': 'Personal Care',
+        'beauty': 'Personal Care',
+        'hygiene': 'Personal Care',
+        'health': 'Health',
+        'medicine': 'Health',
+        'vitamins': 'Health',
     }
-    
-    # Check if main category contains any keywords
+
     main_lower = main_category.lower()
     for keyword, mapped_category in category_map.items():
         if keyword in main_lower:
             return mapped_category
-    
+
     return main_category.title() if main_category else "Uncategorized"
 
 async def lookup_open_food_facts(barcode: str) -> Optional[dict]:
@@ -112,11 +123,10 @@ async def lookup_open_food_facts(barcode: str) -> Optional[dict]:
                 data = response.json()
                 if data.get("status") == 1 and "product" in data:
                     product = data["product"]
-                    
-                    # Extract category
+
                     categories = product.get("categories", "")
                     category = extract_category(categories)
-                    
+
                     return {
                         "barcode": barcode,
                         "name": product.get("product_name", "Unknown Product"),
@@ -130,6 +140,32 @@ async def lookup_open_food_facts(barcode: str) -> Optional[dict]:
         print(f"Open Food Facts lookup error: {e}")
     return None
 
+async def lookup_upcitemdb(barcode: str) -> Optional[dict]:
+    url = f"https://api.upcitemdb.com/prod/trial/lookup?upc={barcode}"
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(url, timeout=10.0)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get("code") == "OK" and data.get("items") and len(data["items"]) > 0:
+                    item = data["items"][0]
+
+                    category_raw = item.get("category", "")
+                    category = extract_category(category_raw)
+
+                    return {
+                        "barcode": barcode,
+                        "name": item.get("title", "Unknown Product"),
+                        "brand": item.get("brand"),
+                        "image_url": item.get("images", [None])[0] if item.get("images") else None,
+                        "category": category,
+                        "source": "UPCitemDB",
+                        "found": True
+                    }
+    except Exception as e:
+        print(f"UPCitemDB lookup error: {e}")
+    return None
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "lookup-service", "timestamp": datetime.utcnow().isoformat()}
@@ -140,13 +176,19 @@ async def lookup_barcode(barcode: str):
     if cached_data:
         cached_data["from_cache"] = True
         return cached_data
-    
+
     product_data = await lookup_open_food_facts(barcode)
     if product_data:
         save_to_cache(barcode, product_data)
         product_data["from_cache"] = False
         return product_data
-    
+
+    product_data = await lookup_upcitemdb(barcode)
+    if product_data:
+        save_to_cache(barcode, product_data)
+        product_data["from_cache"] = False
+        return product_data
+
     return {
         "barcode": barcode,
         "name": f"Unknown Product ({barcode})",

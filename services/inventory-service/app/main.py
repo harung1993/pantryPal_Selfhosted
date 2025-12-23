@@ -1,11 +1,20 @@
 from fastapi import FastAPI, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import Optional, List
 from pydantic import BaseModel
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
 import os
+import csv
+import io
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="PantryPal Inventory Service", version="1.0.0")
 
@@ -13,6 +22,11 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data/inventory.db")
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+BACKUP_ENABLED = os.getenv("BACKUP_ENABLED", "false").lower() == "true"
+BACKUP_SCHEDULE = os.getenv("BACKUP_SCHEDULE", "0 2 * * *")
+BACKUP_RETENTION_DAYS = int(os.getenv("BACKUP_RETENTION_DAYS", "7"))
+BACKUP_PATH = os.getenv("BACKUP_PATH", "/app/backups")
 
 class ItemDB(Base):
     __tablename__ = "items"
@@ -174,6 +188,118 @@ async def get_stats(db: Session = Depends(get_db)):
         "expiring_soon": expiring_soon,
         "manually_added_count": db.query(ItemDB).filter(ItemDB.manually_added == True).count()
     }
+
+def escape_csv_field(value):
+    if value is None:
+        return ''
+    value_str = str(value)
+    if ',' in value_str or '"' in value_str or '\n' in value_str:
+        value_str = value_str.replace('"', '""')
+        return f'"{value_str}"'
+    return value_str
+
+def generate_csv_content(db: Session):
+    items = db.query(ItemDB).order_by(ItemDB.updated_date.desc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    headers = ['Name', 'Barcode', 'Quantity', 'Location', 'Category', 'Expiry Date', 'Added Date', 'Notes']
+    writer.writerow(headers)
+
+    for item in items:
+        row = [
+            item.name or '',
+            item.barcode or '',
+            item.quantity or 1,
+            item.location or '',
+            item.category or '',
+            item.expiry_date.isoformat() if item.expiry_date else '',
+            item.added_date.isoformat() if item.added_date else '',
+            item.notes or '',
+        ]
+        writer.writerow(row)
+
+    return output.getvalue()
+
+@app.get("/export/csv")
+async def export_csv(db: Session = Depends(get_db)):
+    csv_content = generate_csv_content(db)
+
+    filename = f"pantrypal_export_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.csv"
+
+    return StreamingResponse(
+        io.StringIO(csv_content),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+def save_backup(db: Session):
+    try:
+        os.makedirs(BACKUP_PATH, exist_ok=True)
+
+        csv_content = generate_csv_content(db)
+
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
+        filename = f"pantrypal_backup_{timestamp}.csv"
+        filepath = os.path.join(BACKUP_PATH, filename)
+
+        with open(filepath, 'w', newline='', encoding='utf-8') as f:
+            f.write(csv_content)
+
+        logger.info(f"Backup saved successfully: {filename}")
+        cleanup_old_backups()
+
+    except Exception as e:
+        logger.error(f"Backup failed: {str(e)}")
+
+def cleanup_old_backups():
+    try:
+        if not os.path.exists(BACKUP_PATH):
+            return
+
+        cutoff_date = datetime.now() - timedelta(days=BACKUP_RETENTION_DAYS)
+
+        for filename in os.listdir(BACKUP_PATH):
+            if not filename.startswith("pantrypal_backup_") or not filename.endswith(".csv"):
+                continue
+
+            filepath = os.path.join(BACKUP_PATH, filename)
+            file_mtime = datetime.fromtimestamp(os.path.getmtime(filepath))
+
+            if file_mtime < cutoff_date:
+                os.remove(filepath)
+                logger.info(f"Deleted old backup: {filename}")
+
+    except Exception as e:
+        logger.error(f"Backup cleanup failed: {str(e)}")
+
+def scheduled_backup():
+    db = SessionLocal()
+    try:
+        save_backup(db)
+    finally:
+        db.close()
+
+@app.on_event("startup")
+async def startup_event():
+    if BACKUP_ENABLED:
+        logger.info(f"Backup enabled with schedule: {BACKUP_SCHEDULE}")
+        logger.info(f"Backup retention: {BACKUP_RETENTION_DAYS} days")
+        logger.info(f"Backup path: {BACKUP_PATH}")
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            scheduled_backup,
+            trigger=CronTrigger.from_crontab(BACKUP_SCHEDULE),
+            id='backup_job',
+            name='Automated CSV Backup',
+            replace_existing=True
+        )
+        scheduler.start()
+        logger.info("Backup scheduler started")
+    else:
+        logger.info("Backup disabled")
 
 if __name__ == "__main__":
     import uvicorn

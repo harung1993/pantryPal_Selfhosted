@@ -553,6 +553,20 @@ async def update_item(item_id: int, request: UpdateItemRequest, auth = Depends(g
             raise HTTPException(status_code=404, detail="Item not found")
         raise HTTPException(status_code=500, detail=f"Inventory service error: {str(e)}")
 
+@app.get("/api/export/csv")
+async def export_csv(auth = Depends(get_current_auth)):
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"{INVENTORY_SERVICE_URL}/export/csv", timeout=30.0)
+            response.raise_for_status()
+            return Response(
+                content=response.content,
+                media_type="text/csv",
+                headers={"Content-Disposition": response.headers.get("Content-Disposition", "attachment; filename=pantrypal_export.csv")}
+            )
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
 @app.delete("/api/items/{item_id}")
 async def delete_item(item_id: int, auth = Depends(get_current_auth)):
     try:

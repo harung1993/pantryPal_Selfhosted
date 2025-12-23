@@ -165,4 +165,21 @@ export const logout = async () => {
   }
 };
 
+export const exportItemsCSV = async () => {
+  const api = createApiInstance();
+  const response = await api.get('/api/export/csv', {
+    responseType: 'blob',
+  });
+
+  const blob = new Blob([response.data], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `pantrypal_export_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 export default { createApiInstance };

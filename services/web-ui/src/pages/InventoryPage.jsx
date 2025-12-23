@@ -11,6 +11,9 @@ import { useItems } from '../hooks/useItems';
 import { useLocations } from '../hooks/useLocations';
 import { exportToCSV } from '../utils/exportUtils';
 import { filterByExpiryStatus, sortByExpiry, getExpiryStatus, formatDate } from '../utils/dateUtils';
+import { downloadCSVTemplate, readCSVFile, validateImportedItems } from '../utils/exportUtils';
+import { filterByExpiryStatus, sortByExpiry } from '../utils/dateUtils';
+import { exportItemsCSV } from '../api';
 
 export function InventoryPage({ isDark, sidebarFilters = {} }) {
   const colors = getColors(isDark);
@@ -121,9 +124,12 @@ export function InventoryPage({ isDark, sidebarFilters = {} }) {
     }
   };
 
-  const handleExport = () => {
-    const selected = items.filter(item => selectedItems.has(item.id));
-    exportToCSV(selected.length > 0 ? selected : items);
+  const handleExport = async () => {
+    try {
+      await exportItemsCSV();
+    } catch (err) {
+      alert('Failed to export items');
+    }
   };
 
   if (loading) return <LoadingSpinner />;

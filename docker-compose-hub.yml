@@ -72,8 +72,21 @@ services:
     container_name: pantrypal-inventory-service
     environment:
       - DATABASE_URL=sqlite:////app/data/inventory/inventory.db
+      # Backup Configuration (optional)
+      # Set BACKUP_ENABLED=true to enable automated CSV backups
+      - BACKUP_ENABLED=false
+      # Backup schedule in cron format (default: daily at 2 AM)
+      # Examples: "0 */6 * * *" (every 6h), "0 2 * * 0" (weekly)
+      - BACKUP_SCHEDULE=0 2 * * *
+      # Number of days to keep backups before automatic cleanup
+      - BACKUP_RETENTION_DAYS=7
+      # Path where backups are stored (must match volume mount)
+      - BACKUP_PATH=/app/backups
     volumes:
       - ./data/inventory:/app/data/inventory
+      # Backup storage directory (optional, only needed if BACKUP_ENABLED=true)
+      # Backups saved as: ./backups/pantrypal_backup_YYYY-MM-DD_HHMMSS.csv
+      - ./backups:/app/backups
     networks:
       - pantrypal-network
     restart: unless-stopped
