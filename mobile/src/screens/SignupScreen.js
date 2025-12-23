@@ -15,6 +15,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, borderRadius, shadows } from '../styles/colors';
 import { getApiBaseUrl } from '../../config';
 import api from '../services/api';
+import {
+  isBiometricSupported,
+  isBiometricEnrolled,
+  getBiometricTypes,
+  getBiometricName,
+  saveCredentials,
+  setBiometricEnabled
+} from '../services/biometricAuth';
 
 export default function SignupScreen({ navigation, onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -24,6 +32,41 @@ export default function SignupScreen({ navigation, onLoginSuccess }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const promptBiometricEnrollment = async (username, password) => {
+    const supported = await isBiometricSupported();
+    const enrolled = await isBiometricEnrolled();
+
+    if (!supported || !enrolled) {
+      return; // Device doesn't support biometrics or user hasn't set it up
+    }
+
+    const types = await getBiometricTypes();
+    const biometricName = getBiometricName(types);
+
+    Alert.alert(
+      `Enable ${biometricName}?`,
+      `Use ${biometricName} for quick login next time?`,
+      [
+        {
+          text: 'Not Now',
+          style: 'cancel'
+        },
+        {
+          text: 'Enable',
+          onPress: async () => {
+            const saved = await saveCredentials(username, password);
+            if (saved) {
+              await setBiometricEnabled(true);
+              Alert.alert('Success', `${biometricName} login enabled!`);
+            } else {
+              Alert.alert('Error', 'Failed to save credentials');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const handleSignup = async () => {
     // Validation
@@ -68,15 +111,15 @@ export default function SignupScreen({ navigation, onLoginSuccess }) {
       if (response.ok) {
         // Store session token
         await AsyncStorage.setItem('SESSION_TOKEN', data.session_token);
-        
+
         // CRITICAL: Reset API instance so it picks up the new session token
         api.resetApiInstance();
-        
-        Alert.alert(
-          'Account Created!',
-          'Welcome to PantryPal! Your account has been created successfully.',
-          [{ text: 'Get Started', onPress: () => onLoginSuccess(data.user) }]
-        );
+
+        // Prompt for biometric enrollment
+        await promptBiometricEnrollment(username.trim(), password);
+
+        // Navigate to app
+        onLoginSuccess(data.user);
       } else {
         Alert.alert('Signup Failed', data.detail || 'Could not create account');
       }

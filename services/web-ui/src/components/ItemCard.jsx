@@ -1,9 +1,11 @@
 // Item card component for displaying inventory items
 import { Edit, Trash2, MapPin, Tag, Calendar } from 'lucide-react';
-import { colors, borderRadius, spacing, shadows } from '../colors';
+import { getColors, borderRadius, spacing, getShadows } from '../colors';
 import { formatDate, getExpiryBadgeText, getExpiryColor } from '../utils/dateUtils';
 
-export function ItemCard({ item, onEdit, onDelete, onSelect, isSelected }) {
+export function ItemCard({ item, onEdit, onDelete, onSelect, isSelected, isDark }) {
+  const colors = getColors(isDark);
+  const shadows = getShadows(isDark);
   const expiryColor = getExpiryColor(item.expiry_date);
   const expiryBadge = getExpiryBadgeText(item.expiry_date);
 

@@ -1197,14 +1197,16 @@ function SettingsPage({ onBack, currentUser, isDark }) {
                   <input
                     type="text"
                     value={currentUser?.username || ''}
-                    disabled
+                    readOnly
                     style={{
                       width: '100%',
                       padding: spacing.md,
                       borderRadius: borderRadius.md,
                       border: `2px solid ${colors.border}`,
                       backgroundColor: '#f3f4f6',
+                      color: '#6b7280',
                       cursor: 'not-allowed',
+                      opacity: 1,
                     }}
                   />
                 </div>

@@ -15,12 +15,55 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, borderRadius, shadows } from '../styles/colors';
 import { getApiBaseUrl } from '../../config';
 import api from '../services/api';
+import {
+  isBiometricSupported,
+  isBiometricEnrolled,
+  getBiometricTypes,
+  getBiometricName,
+  saveCredentials,
+  setBiometricEnabled
+} from '../services/biometricAuth';
 
 export default function LoginScreen({ navigation, onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const promptBiometricEnrollment = async (username, password) => {
+    const supported = await isBiometricSupported();
+    const enrolled = await isBiometricEnrolled();
+
+    if (!supported || !enrolled) {
+      return; // Device doesn't support biometrics or user hasn't set it up
+    }
+
+    const types = await getBiometricTypes();
+    const biometricName = getBiometricName(types);
+
+    Alert.alert(
+      `Enable ${biometricName}?`,
+      `Use ${biometricName} for quick login next time?`,
+      [
+        {
+          text: 'Not Now',
+          style: 'cancel'
+        },
+        {
+          text: 'Enable',
+          onPress: async () => {
+            const saved = await saveCredentials(username, password);
+            if (saved) {
+              await setBiometricEnabled(true);
+              Alert.alert('Success', `${biometricName} login enabled!`);
+            } else {
+              Alert.alert('Error', 'Failed to save credentials');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -46,13 +89,15 @@ export default function LoginScreen({ navigation, onLoginSuccess }) {
       if (response.ok) {
         // Store session token
         await AsyncStorage.setItem('SESSION_TOKEN', data.session_token);
-        
+
         // CRITICAL: Reset API instance so it picks up the new session token
         api.resetApiInstance();
-        
-        Alert.alert('Success', 'Login successful!', [
-          { text: 'OK', onPress: () => onLoginSuccess(data.user) }
-        ]);
+
+        // Prompt for biometric enrollment
+        await promptBiometricEnrollment(username.trim(), password);
+
+        // Navigate to app
+        onLoginSuccess(data.user);
       } else {
         Alert.alert('Login Failed', data.detail || 'Invalid credentials');
       }

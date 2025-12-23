@@ -34,13 +34,13 @@ services:
     environment:
       - INVENTORY_SERVICE_URL=http://inventory-service:8001
       - LOOKUP_SERVICE_URL=http://lookup-service:8002
-      - AUTH_MODE=smart  # Options: none, api_key_only, full, smart
+      - AUTH_MODE=full  # Options: none, api_key_only, full, smart
       # none: No authentication (open access)
       # api_key_only: API keys required for all requests
       # full: Login required for UI, API keys OR session for API
       # smart: Local network = open, external = login/API key required
       - TRUSTED_NETWORKS=192.168.0.0/16,10.0.0.0/8,172.16.0.0/12,127.0.0.0/8
-      - ALLOW_REGISTRATION=false  # Set to false to disable new user signups
+      - ALLOW_REGISTRATION=true  # Set to false to disable new user signups
       # Email settings (for password reset and notifications)
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}

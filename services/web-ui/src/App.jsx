@@ -1,4 +1,4 @@
-// Main App - With Working Search
+// Main App
 import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
@@ -7,7 +7,7 @@ import InventoryPage from './pages/InventoryPage';
 import AddItemPage from './pages/AddItemPage';
 import SettingsPage from './SettingsPage';
 import LandingPage from './LandingPage';
-import { getItems } from './api';
+import { getItems, getCurrentUser } from './api';
 import { useDarkMode } from './hooks/useDarkMode';
 import './App.css';
 
@@ -17,7 +17,6 @@ function AppContent() {
   const [currentUser, setCurrentUser] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [filters, setFilters] = useState({});
-  const [searchQuery, setSearchQuery] = useState('');
   const { isDark, toggle: toggleDark } = useDarkMode();
   const navigate = useNavigate();
   const location = useLocation();
@@ -27,9 +26,23 @@ function AppContent() {
   const checkAuth = async () => {
     try {
       await getItems();
+      // Fetch current user info
+      try {
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+      } catch (userError) {
+        console.warn('Could not fetch user info:', userError);
+      }
       setShowLanding(false);
     } catch (error) {
-      setShowLanding(error.response?.status === 401);
+      // Show landing page for any auth errors (401) or network errors
+      const isAuthError = error.response?.status === 401;
+      const isNetworkError = !error.response;
+      setShowLanding(isAuthError || isNetworkError);
+
+      if (isAuthError) {
+        console.log('Authentication required - showing login page');
+      }
     } finally {
       setCheckingAuth(false);
     }
@@ -37,12 +50,6 @@ function AppContent() {
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
-    setSearchQuery('');
-  };
-
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    if (query) setFilters({});
   };
 
   if (checkingAuth) {
@@ -64,11 +71,11 @@ function AppContent() {
     <div className="app">
       <Sidebar isOpen={sidebarOpen} currentPath={location.pathname} onNavigate={navigate} onFilterChange={handleFilterChange} isDark={isDark} />
       <div className="main-content-wrapper">
-        <TopBar onMenuClick={() => setSidebarOpen(!sidebarOpen)} currentUser={currentUser} onLogout={() => { setCurrentUser(null); setShowLanding(true); navigate('/'); }} onSettingsClick={() => navigate('/settings')} isDark={isDark} onToggleDark={toggleDark} onSearch={handleSearch} searchValue={searchQuery} />
+        <TopBar onMenuClick={() => setSidebarOpen(!sidebarOpen)} currentUser={currentUser} onLogout={() => { setCurrentUser(null); setShowLanding(true); navigate('/'); }} onSettingsClick={() => navigate('/settings')} isDark={isDark} onToggleDark={toggleDark} />
         <main className="main-content">
           <Routes>
-            <Route path="/" element={<InventoryPage isDark={isDark} filters={filters} searchQuery={searchQuery} />} />
-            <Route path="/inventory" element={<InventoryPage isDark={isDark} filters={filters} searchQuery={searchQuery} />} />
+            <Route path="/" element={<InventoryPage isDark={isDark} sidebarFilters={filters} />} />
+            <Route path="/inventory" element={<InventoryPage isDark={isDark} sidebarFilters={filters} />} />
             <Route path="/add" element={<AddItemPage onBack={() => navigate('/inventory')} isDark={isDark} />} />
             <Route path="/settings" element={<SettingsPage currentUser={currentUser} onLogout={() => { setCurrentUser(null); setShowLanding(true); navigate('/'); }} onBack={() => navigate('/inventory')} isDark={isDark} />} />
             <Route path="*" element={<Navigate to="/" replace />} />

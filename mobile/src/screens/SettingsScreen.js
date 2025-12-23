@@ -7,6 +7,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, spacing, borderRadius } from '../styles/colors';
 import api from '../services/api';
 import { getDefaultLocations, getDefaultCategories, saveDefaultLocations, saveDefaultCategories, DEFAULT_LOCATIONS, DEFAULT_CATEGORIES } from '../utils/defaults';
+import {
+  isBiometricSupported,
+  isBiometricEnrolled,
+  isBiometricEnabled,
+  setBiometricEnabled,
+  getBiometricTypes,
+  getBiometricName,
+  deleteCredentials
+} from '../services/biometricAuth';
 
 export default function SettingsScreen({ navigation, currentUser, onLogout }) {
   // Connection settings
@@ -46,19 +55,24 @@ export default function SettingsScreen({ navigation, currentUser, onLogout }) {
   const [editingCategory, setEditingCategory] = useState(null);
   const [editCategoryValue, setEditCategoryValue] = useState('');
 
+  // Biometric state
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState('Biometric');
+  const [biometricToggle, setBiometricToggle] = useState(false);
+
   // Collapsed sections state
   const [collapsedSections, setCollapsedSections] = useState(new Set([
-    'connection', 'profile', 'password', 'stats', 'invite', 'users', 'preferences', 'about'
+    'connection', 'security', 'profile', 'password', 'stats', 'invite', 'users', 'preferences', 'about'
   ]));
 
-  // Check if user is on trusted network (not actually logged in)
-  const isTrustedNetwork = !currentUser || currentUser?.type === 'trusted_network';
-  const isActualUser = currentUser && !isTrustedNetwork; // Any logged in user (not just trusted network)
+  // Check if user is logged in
+  const isActualUser = !!currentUser; // Any logged in user
   const isAdmin = currentUser?.is_admin;
 
   useEffect(() => {
     loadConnectionSettings();
     loadPreferences();
+    loadBiometricSettings();
 
     // Only load profile for actual logged-in users
     if (isActualUser) {
@@ -304,6 +318,64 @@ export default function SettingsScreen({ navigation, currentUser, onLogout }) {
     }
   };
 
+  const loadBiometricSettings = async () => {
+    const supported = await isBiometricSupported();
+    const enrolled = await isBiometricEnrolled();
+
+    if (supported && enrolled) {
+      const types = await getBiometricTypes();
+      const name = getBiometricName(types);
+      setBiometricType(name);
+      setBiometricAvailable(true);
+
+      const enabled = await isBiometricEnabled();
+      setBiometricToggle(enabled);
+    } else {
+      setBiometricAvailable(false);
+    }
+  };
+
+  const handleBiometricToggle = async (value) => {
+    if (value) {
+      // Enabling biometric - need to prompt for password to save credentials
+      Alert.alert(
+        `Enable ${biometricType}`,
+        'To enable biometric login, you need to log out and log back in.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'OK',
+            onPress: () => {
+              Alert.alert('Info', 'Please log out and log back in to enable biometric login.');
+            }
+          }
+        ]
+      );
+    } else {
+      // Disabling biometric
+      Alert.alert(
+        `Disable ${biometricType}`,
+        'This will remove your saved credentials. You will need to enter your password manually next time.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Disable',
+            style: 'destructive',
+            onPress: async () => {
+              const success = await deleteCredentials();
+              if (success) {
+                setBiometricToggle(false);
+                Alert.alert('Success', `${biometricType} login disabled`);
+              } else {
+                Alert.alert('Error', 'Failed to disable biometric login');
+              }
+            }
+          }
+        ]
+      );
+    }
+  };
+
   const toggleSection = (sectionKey) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setCollapsedSections(prev => {
@@ -332,18 +404,9 @@ export default function SettingsScreen({ navigation, currentUser, onLogout }) {
       {currentUser && (
         <View style={styles.userInfo}>
           <View style={{ flex: 1 }}>
-            {isTrustedNetwork ? (
-              <>
-                <Text style={styles.username}>🏠 Local Network Access</Text>
-                <Text style={styles.userEmail}>Connected via trusted network</Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.username}>{currentUser.username}</Text>
-                {currentUser.email && (
-                  <Text style={styles.userEmail}>{currentUser.email}</Text>
-                )}
-              </>
+            <Text style={styles.username}>{currentUser.username}</Text>
+            {currentUser.email && (
+              <Text style={styles.userEmail}>{currentUser.email}</Text>
             )}
           </View>
           {isAdmin && (
@@ -414,6 +477,51 @@ export default function SettingsScreen({ navigation, currentUser, onLogout }) {
             </>
           )}
         </View>
+
+        {/* SECURITY SECTION - Only for actual logged in users */}
+        {isActualUser && biometricAvailable && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.sectionHeaderClickable}
+              onPress={() => toggleSection('security')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionTitle}>
+                {collapsedSections.has('security') ? '▶' : '▼'} 🔐 Security
+              </Text>
+            </TouchableOpacity>
+
+            {!collapsedSections.has('security') && (
+              <>
+                <Text style={styles.sectionDescription}>Manage your security settings</Text>
+
+                <View style={styles.toggleRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.label}>{biometricType} Login</Text>
+                    <Text style={styles.hint}>
+                      Use {biometricType} for quick and secure access
+                    </Text>
+                  </View>
+                  <Switch
+                    value={biometricToggle}
+                    onValueChange={handleBiometricToggle}
+                    trackColor={{ false: '#d1d5db', true: colors.primary }}
+                    thumbColor="#ffffff"
+                  />
+                </View>
+
+                {biometricToggle && (
+                  <View style={[styles.infoBox, { backgroundColor: colors.background, padding: spacing.md, borderRadius: borderRadius.md, marginTop: spacing.md }]}>
+                    <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
+                      ✓ {biometricType} is enabled{'\n'}
+                      Your credentials are stored securely on this device
+                    </Text>
+                  </View>
+                )}
+              </>
+            )}
+          </View>
+        )}
 
         {/* PROFILE SECTION - Only for actual logged in users */}
         {isActualUser && (
@@ -553,22 +661,6 @@ export default function SettingsScreen({ navigation, currentUser, onLogout }) {
                 </TouchableOpacity>
               </>
             )}
-          </View>
-        )}
-
-        {/* LOGIN PROMPT - For trusted network users */}
-        {isTrustedNetwork && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>🔐 Account Access</Text>
-            <Text style={styles.sectionDescription}>
-              You're currently using local network access. To manage your profile and access admin features, you need to log in with an account.
-            </Text>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={onLogout}
-            >
-              <Text style={styles.buttonText}>🔑 Login with Account</Text>
-            </TouchableOpacity>
           </View>
         )}
 

@@ -58,7 +58,8 @@
           "color": "#ffffff",
           "sounds": []
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {
