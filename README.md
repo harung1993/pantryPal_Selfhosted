@@ -4,24 +4,42 @@
 
 [![Status](https://img.shields.io/badge/Status-Production%20Ready-success)](https://github.com/harung1993/pantrypal)
 [![Platform](https://img.shields.io/badge/Platform-iOS%20%7C%20Web-blue)](https://github.com/harung1993/pantrypal)
-[![License](https://img.shields.io/badge/License-AGPL--3.0-orange)](LICENSE)
+[![License](https://img.shields.io/badge/License-Personal%20Use-orange)](LICENSE)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-Ready-41BDF5)](https://www.home-assistant.io/)
 
 ---
 
 ## The Story Behind PantryPal
 
-My wife and I have a pantry in the basement. We kept buying duplicate items because we couldn't remember what we already had down there, and we'd regularly discover expired food we'd forgotten about.
+My wife and I have a pantry in the basement. Like many couples, we kept buying duplicate items because we genuinely couldn't remember what we already had down there. Worse, we'd regularly discover expired food we'd completely forgotten about—wasted money and wasted food.
 
-As a data scientist learning software development as a hobby, I built PantryPal to solve this problem. It integrates with our Home Assistant setup and lets us quickly scan barcodes to track what we have.
+One day, after bringing home our third can of tomato sauce in a month, my wife suggested: "Can't you just... build something?"
 
-Simple problem, over-engineered solution. But it works.
+Well now we have PantryPal to solve our household's very real, very annoying problem. It integrates with our Home Assistant setup and lets us quickly scan barcodes to track what we have. We can check our inventory from anywhere, get alerts before things expire, and finally stop the duplicate-buying madness.
 
-This is the first of three household management tools I'm building as part of the PalStack - a suite of privacy-first, self-hosted life management applications:
+**The Home Automation Touch:** I installed contact sensors on our basement pantry doors. Now, whenever someone opens the pantry, Home Assistant sends me a persistent notification reminding me to update the inventory. No more "I took something out but forgot to log it" moments. It's a gentle nudge that keeps our pantry data accurate without being annoying.
 
-- **PantryPal** - You're here! Pantry inventory management
-- **PropertyPal** - Property and maintenance tracking (in development)
-- **BudgetPal** - Debt repayment and household budgeting (fork of DollarDollar Bill Y'all)
+**Learning Through Building:** My background is in data science, not software engineering. I knew Python and could wrangle data all day, but proper software architecture? Microservices? Docker orchestration? That was all new territory. PantryPal became my learning project—a real problem that justified diving deep into backend design, API development, and mobile apps.
+
+I leaned heavily on AI coding assistants (Claude, Qwen Coder, ChatGPT) to bridge the gap between "data scientist who can code" and "building production-ready applications." These tools didn't write the code for me—they taught me *why* certain architectural decisions matter, helped me debug obscure Docker networking issues at 2 AM, and explained FastAPI patterns I'd never encountered before. Each PalStack project has been a deliberate exercise in learning a new piece of the software development puzzle.
+
+Is it over-engineered? Absolutely. Does it work? Perfectly. Did I learn a ton? Even better.
+
+But here's the thing—once you solve one household problem with code, you start seeing them everywhere. PantryPal became the first piece of something bigger: **PalStack**, a collection of privacy-first, self-hosted tools for managing everyday life.
+
+### The PalStack Family
+
+**Released:**
+- **[PantryPal](https://github.com/harung1993/pantryPal_Selfhosted)** - You're here! Never buy duplicate groceries again
+- **[DollarDollar Bill Y'all](https://github.com/harung1993/dollardollar)** - The original debt repayment tracker that started it all
+
+**In Development:**
+- **PropertyPal** - Track home maintenance, warranties, and that HVAC filter you always forget to change
+- **DebtFree** - Gamified debt management (evolved from DollarDollar Bill Y'all with achievements, progress tracking, and motivation)
+- **MinglePal** - Club and group management for hobby groups, book clubs, and community organizations
+- **BudgetPal** - Comprehensive household budgeting built on the DollarDollar foundation
+
+*Why "Pal"? Because that's what these tools are—friendly helpers for the everyday stuff we all struggle with.*
 
 ---
 
@@ -41,15 +59,13 @@ This is the first of three household management tools I'm building as part of th
 ## Key Features
 
 ### For Everyday Use
-- **Barcode Scanning**: Quick item entry via mobile camera (supports food & household items)
+- **Barcode Scanning**: Quick item entry via mobile camera
 - **Manual Entry**: Add items without barcodes
 - **Expiry Tracking**: Know what's expiring before it goes bad
 - **Multi-User Support**: Family members can all access and update
 - **Beautiful Web Dashboard**: Minimal, clean interface with dark mode
-- **Mobile App**: Native iOS app (distributed via TestFlight)
-- **Automated Backups**: Optional scheduled CSV backups with retention policy
-- **CSV Import/Export**: Easy data portability and disaster recovery
-- **Multi-Source Lookup**: Automatic fallback to multiple barcode databases for better coverage
+- **Mobile App**: Native iOS app with biometric authentication (Face ID/Touch ID)
+- **User Authentication**: Secure account-based access with session management
 
 ### For Home Assistant Fans
 - **REST API Integration**: Pull pantry data into Home Assistant
@@ -88,7 +104,6 @@ Pantry stats and expiring items right in your dashboard
 ### Option 1: Docker Hub (Easiest - Recommended)
 
 Pull pre-built images from Docker Hub - no need to clone the repo!
-
 ```bash
 # Download docker-compose file
 curl -O https://raw.githubusercontent.com/harung1993/pantrypal/main/docker-compose-hub.yml
@@ -119,7 +134,6 @@ docker-compose -f docker-compose-hub.yml up -d
 ### Option 2: Build from Source
 
 For developers or if you want to customize:
-
 ```bash
 # Clone repository
 git clone https://github.com/harung1993/pantrypal.git
@@ -145,7 +159,6 @@ docker-compose up -d
 ## Architecture
 
 Built with a microservices architecture for easy maintenance and future expansion:
-
 ```
 nginx (reverse proxy)
 ├── api-gateway (FastAPI)     # Authentication, routing, email notifications
@@ -160,7 +173,7 @@ nginx (reverse proxy)
 - Mobile: React Native + Expo
 - Database: SQLite (simple, portable, no setup)
 - Reverse Proxy: nginx
-- Barcode Data: Open Food Facts API + UPCitemDB (fallback for non-food items)
+- Barcode Data: Open Food Facts API
 
 ---
 
@@ -213,7 +226,6 @@ You'll receive an invitation within 24-48 hours.
 ### Quick Setup
 
 Add this to your `configuration.yaml`:
-
 ```yaml
 sensor:
   - platform: rest
@@ -238,7 +250,6 @@ sensor:
 6. Copy the key and use it in your Home Assistant configuration
 
 ### Example Automation
-
 ```yaml
 automation:
   - alias: "Morning Pantry Check"
@@ -280,160 +291,13 @@ All three share the same philosophy:
 - **Privacy-first**: Self-hosted, no cloud dependencies
 - **Family-focused**: Multi-user, easy for everyone to use
 - **Smart home ready**: Built with Home Assistant integration in mind
-- **Open source**: AGPL-3.0 for personal use
-- **Privacy-first**: Self-hosted, no cloud dependencies (because trust issues)
-- **Family-focused**: Multi-user, easy for everyone to use (even spouses who "just want a list")
-- **Smart home ready**: Built with Home Assistant integration in mind (because of course)
-- **Open source**: AGPL-3.0 for personal use (sharing is caring)
-- **Over-engineered**: Why use a spreadsheet when you can use Docker? 🤷‍♂️
-
----
-
-## Mobile App Access
-
-The iOS app is distributed via TestFlight for family and early testers.
-
-**Request Access:**
-- Email: palstack4u@gmail.com
-- Subject: "PantryPal TestFlight Request"
-- Include: Your Apple ID email
-
-You'll receive an invitation within 24-48 hours.
-
-**Note:** This is a personal project for family use, not a commercial app. No App Store release is planned.
-
----
-
-## Authentication Modes
-
-Configure `AUTH_MODE` in `docker-compose.yml`:
-
-| Mode | Best For | Home Network | External Access |
-|------|----------|--------------|-----------------|
-| **smart** | Most households | Open (no login) | Login required |
-| **none** | Single user only | Open | Open (insecure) |
-| **full** | Maximum security | Login required | Login required |
-| **api_key_only** | API integrations | API key only | API key only |
-
-**Recommended:** Use `smart` mode - it's open when you're home, secure when you're away.
-
----
-
-## Barcode Lookup
-
-PantryPal uses multiple barcode databases to ensure maximum product coverage.
-
-### Supported Product Types
-
-- **Food Items**: Groceries, beverages, snacks, canned goods
-- **Cleaning Products**: Detergents, soaps, household cleaners
-- **Personal Care**: Beauty products, hygiene items
-- **Household Items**: Paper products, tissues, general household goods
-- **Health Products**: Vitamins, supplements, medicines
-
-### How It Works
-
-When you scan a barcode, PantryPal:
-1. Checks the local cache first (instant results)
-2. Queries Open Food Facts API (best for food items)
-3. Falls back to UPCitemDB API (for cleaning & household items)
-4. Caches results for 30 days to improve speed
-
-### If Product Not Found
-
-If a barcode isn't found in any database:
-- The app allows manual entry
-- You can add the product name, brand, category, and other details
-- It will be saved for future use
-
-This multi-source approach provides significantly better coverage than single-database systems, especially for non-food items like cleaning supplies that are often missing from food-focused databases.
-
----
-
-## Automated Backups
-
-PantryPal includes optional automated CSV backups for disaster recovery.
-
-### Configuration
-
-In `docker-compose.yml` or `docker-compose-hub.yml`, configure the inventory service:
-
-```yaml
-inventory-service:
-  environment:
-    - BACKUP_ENABLED=true                 # Enable automated backups
-    - BACKUP_SCHEDULE=0 2 * * *          # Daily at 2 AM (cron format)
-    - BACKUP_RETENTION_DAYS=7             # Keep backups for 7 days
-    - BACKUP_PATH=/app/backups
-  volumes:
-    - ./backups:/app/backups              # Backup storage directory
-```
-
-### Backup Schedule Examples
-
-```bash
-# Daily at 2 AM
-BACKUP_SCHEDULE=0 2 * * *
-
-# Every 6 hours
-BACKUP_SCHEDULE=0 */6 * * *
-
-# Weekly on Sunday at 2 AM
-BACKUP_SCHEDULE=0 2 * * 0
-
-# Twice daily (2 AM and 2 PM)
-BACKUP_SCHEDULE=0 2,14 * * *
-```
-
-### Manual Export
-
-Export your data anytime via the web dashboard:
-1. Open PantryPal web UI
-2. Navigate to Inventory page
-3. Click "Export" button
-4. CSV file downloads automatically
-
-### Disaster Recovery
-
-If your database is lost or corrupted:
-1. Find the latest backup in `./backups/` directory
-2. Open PantryPal web UI
-3. Click "Import" on the Inventory page
-4. Select the backup CSV file
-5. All items are restored
-
-Backup files are named: `pantrypal_backup_YYYY-MM-DD_HHMMSS.csv`
-
----
-
-## Built With AI Assistance
-
-This project was built with significant help from AI coding assistants:
-- **Claude** (Anthropic) - Primary development assistant
-- **Qwen** - Code review and optimization
-- **Gemini** (Google) - Architecture decisions
-
-Why mention this? Because in 2025, building useful software doesn't mean writing every line yourself. It means solving real problems efficiently. AI tools helped me go from "frustrated pantry shopper" to "working app" in weeks instead of months.
-
----
-
-## Contributing
-
-This is a personal project built for my household, but:
-
-- 🐛 **Bug reports** are welcome via GitHub Issues
-- 💡 **Feature suggestions** appreciated
-- 🍴 **Forks encouraged** for personal customization
-- 🚫 **Commercial use** requires permission (see LICENSE)
-
-If PantryPal solves your household problem too, I'd love to hear about it!
+- **Open source**: Free for personal use, with commercial hosting reserved
 
 ---
 
 ## Development
 
 ### Local Development
-
 ```bash
 # Backend services
 docker-compose up -d
@@ -450,7 +314,6 @@ npx expo start
 ```
 
 ### Building for Production
-
 ```bash
 # Build all Docker images
 docker-compose up -d --build
@@ -461,7 +324,6 @@ eas build --platform ios --profile production
 ```
 
 ### Project Structure
-
 ```
 pantrypal/
 ├── docker-compose.yml          # Main orchestration file
@@ -516,44 +378,51 @@ This is a personal project built for my household, but:
 - **Bug reports** are welcome via GitHub Issues
 - **Feature suggestions** appreciated
 - **Forks encouraged** for personal customization
-- **Commercial use** requires permission (see LICENSE)
+- **Pull requests** considered for features that benefit the community
 
-If PantryPal solves your household problem too, I'd love to hear about it!
+By contributing, you agree that your contributions will be licensed under the same terms as the project.
 
 ---
 
 ## License
 
-**AGPL-3.0 - Personal Use**
+**Personal Use License**
 
-Copyright (c) 2025 Harun Gunasekaran
+Copyright (c) 2025 PalStack
 
-This software is free for personal, non-commercial use. If PantryPal helps you solve the same problem it solved for me, that's wonderful!
+**Free for Personal Use:** PantryPal is freely available for personal, non-commercial, self-hosted use. You can install it, modify it, and use it in your home.
 
-For commercial use, please reach out.
+**Commercial & Hosted Services:** PalStack reserves the exclusive right to offer PantryPal as a hosted service or commercial product. If you want to offer PantryPal as a service, integrate it into a commercial product, or deploy it in a business setting, please contact us for licensing.
+
+**Full License:** See [LICENSE](LICENSE) file for complete terms.
+
+**Questions?** Email palstack4u@gmail.com
 
 ---
 
 ## Acknowledgments
 
-- **My wife** - For the original suggestion to "just keep a list" which I spectacularly over-engineered
+- **My wife** - For the original suggestion to "just keep a list"
 - **Three cans of tomato sauce** - For sitting in my basement and inspiring this entire project
+- **Claude, Qwen Coder, and ChatGPT** - For being patient teachers when I had no idea what I was doing
 - **Open Food Facts** - For the amazing product database API
 - **Home Assistant Community** - For building an incredible smart home platform
 - **Docker** - For making "but it works on my machine" a thing of the past
-- **Everyone who said "just use Google Keep"** - You're not wrong, you're just... simpler than me
+- **Everyone who said "just use Google Keep"** - You're not wrong
 
 ---
 
 ## Contact
 
-**Project Maintainer:** Harun Gunasekaran
-**Email:** palstack4u@gmail.com
+**Project Maintainer:** Harun Gunasekaran  
+**Email:** palstack4u@gmail.com  
 **GitHub:** [@harung1993](https://github.com/harung1993)
 
 **PalStack Projects:**
 - PantryPal - This project
 - PropertyPal - Coming soon
+- DebtFree - Coming soon
+- MinglePal - Coming soon
 - BudgetPal - Planned
 
 ---
