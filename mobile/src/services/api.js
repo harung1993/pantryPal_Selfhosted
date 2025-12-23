@@ -36,7 +36,7 @@ const getApi = async () => {
     
     apiInstance = axios.create({
       baseURL,
-      timeout: 10000,
+      timeout: 3000, // 3 seconds timeout for faster failure to landing page
       headers,
       withCredentials: false,
     });

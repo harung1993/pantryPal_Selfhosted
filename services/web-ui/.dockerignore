@@ -1,8 +1,41 @@
-node_modules
-npm-debug.log
+# Web UI Service .dockerignore
+
+# Node & Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.vite/
+.parcel-cache/
+.cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE & OS
 .DS_Store
-dist
-build
-.vite
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation
 *.md
 README.md
+docs/
+
+# Backup files
+*.backup
+*.bak
+*~
+
+# Testing
+coverage/
+.nyc_output/

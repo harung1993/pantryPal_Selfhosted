@@ -47,12 +47,13 @@ export default function LandingScreen({ navigation }) {
           <Text style={styles.icon}>🥫</Text>
           <Text style={styles.title}>PantryPal</Text>
           <Text style={styles.subtitle}>Part of PalStack</Text>
+          <Text style={styles.tagline}>Never let food go to waste</Text>
         </View>
 
         <View style={styles.configCard}>
-          <Text style={styles.configTitle}>Connect to PantryPal</Text>
+          <Text style={styles.configTitle}>Connect to Your Server</Text>
           <Text style={styles.configSubtitle}>
-            Enter your PantryPal server URL
+            Enter your self-hosted PantryPal server URL
           </Text>
 
           <View style={styles.inputGroup}>
@@ -82,10 +83,17 @@ export default function LandingScreen({ navigation }) {
             <Text style={styles.continueButtonText}>Continue</Text>
           </TouchableOpacity>
 
-          <View style={styles.helperBox}>
-            <Text style={styles.helperText}>
-              💡 This is the URL where your PantryPal backend is running.
-              If you're at home, you can also access directly without this step.
+          <View style={styles.palstackBox}>
+            <Text style={styles.palstackTitle}>PalStack Mission</Text>
+            <Text style={styles.palstackQuote}>
+              "That's what pals do – they show up and help with the everyday stuff. At PalStack, we build simple, open-source tools that make life easier."
+            </Text>
+          </View>
+
+          <View style={styles.hostedBox}>
+            <Text style={styles.hostedText}>
+              🚀 Hosted version coming soon!{'\n'}
+              No server setup required.
             </Text>
           </View>
         </View>
@@ -101,85 +109,74 @@ export default function LandingScreen({ navigation }) {
         <Text style={styles.icon}>🥫</Text>
         <Text style={styles.title}>PantryPal</Text>
         <Text style={styles.subtitle}>Part of PalStack</Text>
+        <Text style={styles.tagline}>Never let food go to waste</Text>
       </View>
 
-      {/* Tagline */}
-      <Text style={styles.tagline}>Never let food go to waste again</Text>
-
-      {/* Features */}
-      <View style={styles.features}>
-        <Feature icon="📷" text="Scan barcodes with your phone" />
-        <Feature icon="🔔" text="Get notified about expiring items" />
-        <Feature icon="🏠" text="Integrate with Home Assistant" />
-        <Feature icon="📊" text="Track everything in one place" />
-        <Feature icon="🔒" text="Your data stays on your server" />
-      </View>
-
-      {/* PalStack Mission */}
+      {/* Mission Box */}
       <View style={styles.missionBox}>
         <Text style={styles.missionTitle}>PalStack Mission</Text>
         <Text style={styles.missionText}>
-          "That's what pals do – they show up and help with the everyday stuff. 
-          At PalStack, we build simple, open-source tools that make life easier. 
-          Track what's in your pantry, manage home repairs, stay on top of your budget – 
-          all without compromising your privacy or freedom.{'\n\n'}
-          Self-host for complete control, modify them to fit your needs, or use our 
-          affordable hosted option. Either way, your pal's got your back."
+          "That's what pals do – they show up and help with the everyday stuff. At PalStack, we build simple, open-source tools that make life easier."
         </Text>
+      </View>
+
+      {/* Features */}
+      <View style={styles.featuresBox}>
+        <View style={styles.featureRow}>
+          <Text style={styles.featureIcon}>📷</Text>
+          <Text style={styles.featureText}>Scan barcodes with your phone</Text>
+        </View>
+        <View style={styles.featureRow}>
+          <Text style={styles.featureIcon}>🔔</Text>
+          <Text style={styles.featureText}>Get notified about expiring items</Text>
+        </View>
+        <View style={styles.featureRow}>
+          <Text style={styles.featureIcon}>🏠</Text>
+          <Text style={styles.featureText}>Integrate with Home Assistant</Text>
+        </View>
+        <View style={styles.featureRow}>
+          <Text style={styles.featureIcon}>🔒</Text>
+          <Text style={styles.featureText}>Your data stays on your server</Text>
+        </View>
       </View>
 
       {/* Auth Buttons */}
       <View style={styles.authButtons}>
-        <TouchableOpacity 
-          style={styles.signInButton}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={styles.signInButtonText}>Sign In</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.signUpButton}
+        <TouchableOpacity
+          style={styles.getStartedButton}
           onPress={() => navigation.navigate('Signup')}
         >
-          <Text style={styles.signUpButtonText}>Sign Up</Text>
+          <Text style={styles.getStartedButtonText}>Get Started</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <Text style={styles.loginButtonText}>I have an account</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Hosted Version Notice */}
+      <View style={styles.hostedNotice}>
+        <Text style={styles.hostedText}>
+          🚀 Hosted version coming soon! No server setup required.
+        </Text>
       </View>
 
       {/* Change Server Link */}
       <TouchableOpacity
         onPress={async () => {
           await AsyncStorage.removeItem('API_BASE_URL');
-          resetApiInstance(); // Reset API instance
+          resetApiInstance();
           setServerConfigured(false);
           setServerUrl('');
         }}
-        style={{ alignItems: 'center', marginBottom: spacing.md }}
+        style={styles.serverLinkContainer}
       >
-        <Text style={styles.changeServerText}>Change server →</Text>
+        <Text style={styles.serverLinkText}>← Change Server</Text>
       </TouchableOpacity>
-
-      {/* Helper Text */}
-      <View style={styles.helperBox}>
-        <Text style={styles.helperText}>
-          💡 <Text style={styles.helperBold}>At home?</Text> You can access PantryPal 
-          directly without logging in! This login is only needed for external access.
-        </Text>
-      </View>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>🥫 PantryPal • Self-hosted pantry management</Text>
-      </View>
     </ScrollView>
-  );
-}
-
-function Feature({ icon, text }) {
-  return (
-    <View style={styles.feature}>
-      <Text style={styles.featureIcon}>{icon}</Text>
-      <Text style={styles.featureText}>{text}</Text>
-    </View>
   );
 }
 
@@ -189,19 +186,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   content: {
+    flexGrow: 1,
+    justifyContent: 'center',
     padding: spacing.xl,
-    paddingTop: 60,
   },
   hero: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.xxxl,
   },
   icon: {
-    fontSize: 80,
-    marginBottom: spacing.md,
+    fontSize: 100,
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 48,
+    fontSize: 52,
     fontWeight: 'bold',
     color: colors.textPrimary,
     marginBottom: spacing.xs,
@@ -209,59 +207,19 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 18,
     color: colors.textPrimary,
-    opacity: 0.9,
+    opacity: 0.85,
+    marginBottom: spacing.md,
   },
   tagline: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 20,
     color: colors.textPrimary,
+    opacity: 0.9,
     textAlign: 'center',
-    marginBottom: spacing.xl,
-  },
-  features: {
-    marginBottom: spacing.xl,
-  },
-  feature: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-  },
-  featureIcon: {
-    fontSize: 24,
-    marginRight: spacing.md,
-  },
-  featureText: {
-    fontSize: 16,
-    color: colors.textPrimary,
-    flex: 1,
-  },
-  missionBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    padding: spacing.lg,
-    borderRadius: borderRadius.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.textPrimary,
-    marginBottom: spacing.xl,
-  },
-  missionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  missionText: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    lineHeight: 22,
-    opacity: 0.95,
   },
   authButtons: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  signInButton: {
+  getStartedButton: {
     backgroundColor: colors.accent,
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
@@ -269,12 +227,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     ...shadows.large,
   },
-  signInButtonText: {
+  getStartedButtonText: {
     color: colors.textPrimary,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
   },
-  signUpButton: {
+  loginButton: {
     backgroundColor: 'transparent',
     padding: spacing.lg,
     borderRadius: borderRadius.lg,
@@ -282,35 +240,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.textPrimary,
   },
-  signUpButtonText: {
+  loginButtonText: {
     color: colors.textPrimary,
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
   },
-  helperBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    padding: spacing.lg,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.xl,
-  },
-  helperText: {
-    fontSize: 14,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  helperBold: {
-    fontWeight: 'bold',
-  },
-  footer: {
+  serverLinkContainer: {
     alignItems: 'center',
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl,
+    padding: spacing.md,
   },
-  footerText: {
-    fontSize: 12,
+  serverLinkText: {
     color: colors.textPrimary,
+    fontSize: 14,
     opacity: 0.7,
+    textDecorationLine: 'underline',
   },
   configCard: {
     backgroundColor: colors.card,
@@ -372,5 +315,84 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: 14,
     opacity: 0.7,
+  },
+  palstackBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.textPrimary,
+  },
+  palstackTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  palstackQuote: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    opacity: 0.9,
+    fontStyle: 'italic',
+    lineHeight: 20,
+  },
+  hostedBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+  },
+  hostedText: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  missionBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: spacing.lg,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.xl,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.textPrimary,
+  },
+  missionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  missionText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    opacity: 0.9,
+    fontStyle: 'italic',
+    lineHeight: 22,
+  },
+  featuresBox: {
+    marginBottom: spacing.xl,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.sm,
+  },
+  featureIcon: {
+    fontSize: 24,
+    marginRight: spacing.md,
+  },
+  featureText: {
+    fontSize: 16,
+    color: colors.textPrimary,
+    flex: 1,
+  },
+  hostedNotice: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.lg,
+    alignItems: 'center',
   },
 });

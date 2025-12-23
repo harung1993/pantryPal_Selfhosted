@@ -1,8 +1,10 @@
 // Filter panel for inventory
 import { Search, MapPin, Tag, Calendar, X } from 'lucide-react';
-import { colors, borderRadius, spacing, shadows } from '../colors';
+import { getColors, borderRadius, spacing, getShadows } from '../colors';
 
-export function FilterPanel({ filters, onFilterChange, locations, categories }) {
+export function FilterPanel({ filters, onFilterChange, locations, categories, isDark }) {
+  const colors = getColors(isDark);
+  const shadows = getShadows(isDark);
   const expiryOptions = [
     { value: 'all', label: 'All Items' },
     { value: 'good', label: 'Good (7+ days)' },
@@ -24,7 +26,7 @@ export function FilterPanel({ filters, onFilterChange, locations, categories }) 
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'between', alignItems: 'center', marginBottom: spacing.lg }}>
-        <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold' }}>Filters</h3>
+        <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: colors.textPrimary }}>Filters</h3>
         {hasActiveFilters && (
           <button
             onClick={() => onFilterChange({})}
@@ -50,7 +52,7 @@ export function FilterPanel({ filters, onFilterChange, locations, categories }) 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: spacing.md }}>
         {/* Search */}
         <div>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: spacing.sm }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: spacing.sm, color: colors.textPrimary }}>
             <Search size={16} style={{ verticalAlign: 'middle', marginRight: spacing.xs }} />
             Search
           </label>
@@ -65,13 +67,15 @@ export function FilterPanel({ filters, onFilterChange, locations, categories }) 
               border: `1px solid ${colors.border}`,
               borderRadius: borderRadius.md,
               fontSize: '14px',
+              backgroundColor: colors.background,
+              color: colors.textPrimary,
             }}
           />
         </div>
 
         {/* Location */}
         <div>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: spacing.sm }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: spacing.sm, color: colors.textPrimary }}>
             <MapPin size={16} style={{ verticalAlign: 'middle', marginRight: spacing.xs }} />
             Location
           </label>
@@ -84,6 +88,8 @@ export function FilterPanel({ filters, onFilterChange, locations, categories }) 
               border: `1px solid ${colors.border}`,
               borderRadius: borderRadius.md,
               fontSize: '14px',
+              backgroundColor: colors.background,
+              color: colors.textPrimary,
             }}
           >
             <option value="">All Locations</option>
@@ -95,7 +101,7 @@ export function FilterPanel({ filters, onFilterChange, locations, categories }) 
 
         {/* Category */}
         <div>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: spacing.sm }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: spacing.sm, color: colors.textPrimary }}>
             <Tag size={16} style={{ verticalAlign: 'middle', marginRight: spacing.xs }} />
             Category
           </label>
@@ -108,6 +114,8 @@ export function FilterPanel({ filters, onFilterChange, locations, categories }) 
               border: `1px solid ${colors.border}`,
               borderRadius: borderRadius.md,
               fontSize: '14px',
+              backgroundColor: colors.background,
+              color: colors.textPrimary,
             }}
           >
             <option value="">All Categories</option>
@@ -119,7 +127,7 @@ export function FilterPanel({ filters, onFilterChange, locations, categories }) 
 
         {/* Expiry Status */}
         <div>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: spacing.sm }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: spacing.sm, color: colors.textPrimary }}>
             <Calendar size={16} style={{ verticalAlign: 'middle', marginRight: spacing.xs }} />
             Expiry Status
           </label>
@@ -132,6 +140,8 @@ export function FilterPanel({ filters, onFilterChange, locations, categories }) 
               border: `1px solid ${colors.border}`,
               borderRadius: borderRadius.md,
               fontSize: '14px',
+              backgroundColor: colors.background,
+              color: colors.textPrimary,
             }}
           >
             {expiryOptions.map(opt => (

@@ -5,7 +5,8 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from './src/styles/colors';
 import { getApiBaseUrl } from './config';
-import api from './src/services/api'; // ADD THIS IMPORT
+import api from './src/services/api';
+import { performBiometricLogin, isBiometricEnabled } from './src/services/biometricAuth';
 
 // Main app screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -23,6 +24,27 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
+// Helper function to add timeout to fetch requests
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 3000) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out');
+    }
+    throw error;
+  }
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [needsAuth, setNeedsAuth] = useState(false);
@@ -36,22 +58,22 @@ export default function App() {
   const checkAuthentication = async () => {
     try {
       const baseURL = await getApiBaseUrl();
-      
+
       // First, check what auth mode the server is in
       let status;
       try {
-        const statusResponse = await fetch(`${baseURL}/api/auth/status`, { timeout: 5000 });
+        const statusResponse = await fetchWithTimeout(`${baseURL}/api/auth/status`);
         status = await statusResponse.json();
         console.log('Auth status:', status);
       } catch (error) {
         console.error('Cannot reach server:', error);
         // Server unreachable - show landing page so user can configure connection
-        setNeedsAuth(false);
-        setIsAuthenticated(true);
+        setNeedsAuth(true);
+        setIsAuthenticated(false);
         setCheckingAuth(false);
         return;
       }
-      
+
       // If auth mode is 'none', no authentication needed
       if (status.auth_mode === 'none') {
         setNeedsAuth(false);
@@ -59,33 +81,60 @@ export default function App() {
         setCheckingAuth(false);
         return;
       }
-      
+
+      // Try biometric login first if enabled
+      const biometricEnabled = await isBiometricEnabled();
+      if (biometricEnabled) {
+        console.log('Biometric login enabled, attempting...');
+        const biometricResult = await performBiometricLogin();
+
+        if (biometricResult.success && biometricResult.credentials) {
+          // Attempt to login with saved credentials
+          try {
+            const loginResponse = await fetchWithTimeout(`${baseURL}/api/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(biometricResult.credentials)
+            });
+
+            if (loginResponse.ok) {
+              const data = await loginResponse.json();
+              await AsyncStorage.setItem('SESSION_TOKEN', data.session_token);
+              api.resetApiInstance();
+              setCurrentUser(data.user);
+              setIsAuthenticated(true);
+              setNeedsAuth(false);
+              setCheckingAuth(false);
+              return;
+            }
+          } catch (error) {
+            console.error('Biometric login failed:', error);
+            // Fall through to session token check
+          }
+        }
+      }
+
       // Check if we have a session token
       const sessionToken = await AsyncStorage.getItem('SESSION_TOKEN');
-      
+
       if (sessionToken) {
         // Try to validate the session
         try {
-          const meResponse = await fetch(`${baseURL}/api/auth/me`, {
-            headers: { 
+          const meResponse = await fetchWithTimeout(`${baseURL}/api/auth/me`, {
+            headers: {
               'Authorization': `Bearer ${sessionToken}`,
               'Content-Type': 'application/json'
             }
           });
-          
+
           if (meResponse.ok) {
             const userData = await meResponse.json();
             console.log('Logged in as:', userData);
-            
-            // Only set currentUser if it's an actual session, not trusted network
-            if (userData.type !== 'trusted_network') {
-              setCurrentUser(userData);
-            }
-            
+            setCurrentUser(userData);
             setIsAuthenticated(true);
             setNeedsAuth(false);
           } else {
-            // Session invalid, show landing
+            // Session invalid, clear and require login
             console.log('Session invalid, clearing token');
             await AsyncStorage.removeItem('SESSION_TOKEN');
             setNeedsAuth(true);
@@ -98,52 +147,13 @@ export default function App() {
           setIsAuthenticated(false);
         }
       } else {
-        // No session token
-        // For 'smart' mode on trusted network, allow access without login
-        if (status.auth_mode === 'smart') {
-          // Check if we're on trusted network
-          try {
-            const meResponse = await fetch(`${baseURL}/api/auth/me`);
-            if (meResponse.ok) {
-              const userData = await meResponse.json();
-              if (userData.type === 'trusted_network') {
-                // Trusted network - allow access without setting currentUser
-                setNeedsAuth(false);
-                setIsAuthenticated(true);
-              } else {
-                setNeedsAuth(true);
-                setIsAuthenticated(false);
-              }
-            } else {
-              setNeedsAuth(true);
-              setIsAuthenticated(false);
-            }
-          } catch {
-            setNeedsAuth(true);
-            setIsAuthenticated(false);
-          }
-        } else if (status.auth_mode === 'full') {
-          setNeedsAuth(true);
-          setIsAuthenticated(false);
-        } else if (status.auth_mode === 'api_key_only') {
-          // Check if we have an API key
-          const apiKey = await AsyncStorage.getItem('API_KEY');
-          if (apiKey) {
-            setNeedsAuth(false);
-            setIsAuthenticated(true);
-          } else {
-            setNeedsAuth(true);
-            setIsAuthenticated(false);
-          }
-        } else {
-          // Unknown mode, allow access
-          setNeedsAuth(false);
-          setIsAuthenticated(true);
-        }
+        // No session token - require login
+        setNeedsAuth(true);
+        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      // On error, show landing page (safe default)
+      // On error, require login
       setNeedsAuth(true);
       setIsAuthenticated(false);
     } finally {
@@ -166,9 +176,9 @@ export default function App() {
     try {
       const baseURL = await getApiBaseUrl();
       const sessionToken = await AsyncStorage.getItem('SESSION_TOKEN');
-      
+
       if (sessionToken) {
-        await fetch(`${baseURL}/api/auth/logout`, {
+        await fetchWithTimeout(`${baseURL}/api/auth/logout`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${sessionToken}`,
@@ -179,12 +189,12 @@ export default function App() {
     } catch (error) {
       console.error('Logout error:', error);
     }
-    
+
     await AsyncStorage.removeItem('SESSION_TOKEN');
-    
+
     // Reset API instance on logout too
     api.resetApiInstance();
-    
+
     setCurrentUser(null);
     setIsAuthenticated(false);
     setNeedsAuth(true);

@@ -1,34 +1,34 @@
 // Color system with dark mode - Minimal Design Style
 
 export const lightColors = {
-  primary: '#f59e0b',
-  primaryDark: '#d97706',
+  primary: '#d97706',
+  primaryDark: '#b45309',
   success: '#10b981',
   danger: '#ef4444',
-  warning: '#f59e0b',
+  warning: '#d97706',
   info: '#3b82f6',
   textPrimary: '#292524',
   textSecondary: '#78716c',
   textTertiary: '#a8a29e',
-  background: '#fafaf9',
-  card: '#ffffff',
-  cardHover: '#fafaf9',
+  background: '#fef6ec',
+  card: '#fffcf7',
+  cardHover: '#fef6ec',
   accentBg: '#fef3c7',
-  border: '#e7e5e4',
-  borderDark: '#d6d3d1',
+  border: '#f5e6d3',
+  borderDark: '#e8d5bb',
   expiredBg: '#fef2f2',
   expiredText: '#dc2626',
   warningBg: '#fffbeb',
-  warningText: '#f59e0b',
+  warningText: '#d97706',
   goodText: '#10b981',
 };
 
 export const darkColors = {
-  primary: '#fbbf24',
-  primaryDark: '#f59e0b',
+  primary: '#f59e0b',
+  primaryDark: '#d97706',
   success: '#34d399',
   danger: '#f87171',
-  warning: '#fbbf24',
+  warning: '#f59e0b',
   info: '#60a5fa',
   textPrimary: '#fafaf9',
   textSecondary: '#d6d3d1',
@@ -42,7 +42,7 @@ export const darkColors = {
   expiredBg: '#450a0a',
   expiredText: '#f87171',
   warningBg: '#451a03',
-  warningText: '#fbbf24',
+  warningText: '#f59e0b',
   goodText: '#34d399',
 };
 
@@ -67,6 +67,12 @@ export const spacing = {
 
 export const borderRadius = {
   sm: '6px', md: '8px', lg: '10px', xl: '12px', full: '9999px',
+};
+
+export const shadows = {
+  small: '0 1px 3px rgba(0, 0, 0, 0.05)',
+  medium: '0 2px 8px rgba(0, 0, 0, 0.08)',
+  large: '0 4px 12px rgba(217, 119, 6, 0.3)',
 };
 
 export const colors = lightColors;

@@ -3,13 +3,13 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg-primary: #fafaf9;
-  --bg-card: #ffffff;
+  --bg-primary: #fef6ec;
+  --bg-card: #fffcf7;
   --bg-accent: #fef3c7;
-  --bg-hover: #fafaf9;
+  --bg-hover: #fef6ec;
   --text-primary: #292524;
   --text-secondary: #78716c;
-  --border: #e7e5e4;
+  --border: #f5e6d3;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
 }

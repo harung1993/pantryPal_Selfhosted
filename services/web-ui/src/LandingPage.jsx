@@ -1,26 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { colors, spacing, borderRadius } from './colors';
+import Toast from './components/Toast';
+import { useToast } from './hooks/useToast';
 
 function LandingPage({ onLoginSuccess }) {
   const [view, setView] = useState('landing'); // landing, login, signup, forgot
   const [loading, setLoading] = useState(false);
   const [serverUrl, setServerUrl] = useState('');
   const [serverConfigured, setServerConfigured] = useState(false);
-  
+
   // Login form
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  
+
   // Signup form
   const [signupUsername, setSignupUsername] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [signupFullName, setSignupFullName] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
-  
+
   // Forgot password
   const [forgotEmail, setForgotEmail] = useState('');
   const [resetSent, setResetSent] = useState(false);
+
+  // Toast notifications
+  const { toast, showSuccess, showError, hideToast } = useToast();
 
   useEffect(() => {
     // Check if server is already configured
@@ -33,26 +38,26 @@ function LandingPage({ onLoginSuccess }) {
 
   const handleConfigureServer = () => {
     if (!serverUrl.trim()) {
-      alert('Please enter a server URL');
+      showError('Please enter a server URL');
       return;
     }
 
     const cleanUrl = serverUrl.trim().replace(/\/+$/, '');
-    
+
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
-      alert('Invalid URL\n\nURL must start with http:// or https://');
+      showError('Invalid URL - must start with http:// or https://');
       return;
     }
 
     localStorage.setItem('API_BASE_URL', cleanUrl);
     setServerConfigured(true);
-    alert('✅ Server configured!\n\nYou can now sign in or sign up.');
+    showSuccess('Server configured! You can now sign in or sign up.');
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -63,17 +68,17 @@ function LandingPage({ onLoginSuccess }) {
         }),
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        alert('✅ Login successful!');
+        showSuccess('Login successful!');
         onLoginSuccess(data.user);
       } else {
         const error = await response.json();
-        alert('❌ Login failed\n\n' + (error.detail || 'Invalid credentials'));
+        showError(error.detail || 'Invalid credentials');
       }
     } catch (error) {
-      alert('❌ Connection error\n\nCould not reach server');
+      showError('Could not reach server - check your connection');
     } finally {
       setLoading(false);
     }
@@ -81,19 +86,19 @@ function LandingPage({ onLoginSuccess }) {
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    
+
     if (signupPassword !== signupConfirmPassword) {
-      alert('Passwords do not match');
+      showError('Passwords do not match');
       return;
     }
-    
+
     if (signupPassword.length < 8) {
-      alert('Password must be at least 8 characters');
+      showError('Password must be at least 8 characters');
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -106,17 +111,17 @@ function LandingPage({ onLoginSuccess }) {
         }),
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const data = await response.json();
-        alert('✅ Account created successfully!');
+        showSuccess('Account created successfully!');
         onLoginSuccess(data.user);
       } else {
         const error = await response.json();
-        alert('❌ Signup failed\n\n' + (error.detail || 'Could not create account'));
+        showError(error.detail || 'Could not create account');
       }
     } catch (error) {
-      alert('❌ Connection error\n\nCould not reach server');
+      showError('Could not reach server - check your connection');
     } finally {
       setLoading(false);
     }
@@ -125,22 +130,23 @@ function LandingPage({ onLoginSuccess }) {
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: forgotEmail })
       });
-      
+
       if (response.ok) {
         setResetSent(true);
+        showSuccess('Password reset email sent!');
       } else {
         const error = await response.json();
-        alert('❌ Error\n\n' + (error.detail || 'Could not send reset email'));
+        showError(error.detail || 'Could not send reset email');
       }
     } catch (error) {
-      alert('❌ Connection error\n\nCould not reach server');
+      showError('Could not reach server - check your connection');
     } finally {
       setLoading(false);
     }
@@ -275,6 +281,7 @@ function LandingPage({ onLoginSuccess }) {
                       border: `2px solid ${colors.border}`,
                       fontSize: '16px',
                       marginBottom: spacing.sm,
+                      color: '#000000',
                     }}
                   />
                   <p style={{
@@ -402,6 +409,7 @@ function LandingPage({ onLoginSuccess }) {
             )}
           </div>
         </div>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} duration={toast.duration} />}
       </div>
     );
   }
@@ -469,6 +477,7 @@ function LandingPage({ onLoginSuccess }) {
                   border: `2px solid ${colors.border}`,
                   fontSize: '16px',
                   backgroundColor: '#ffffff',
+                  color: '#000000',
                 }}
               />
             </div>
@@ -494,6 +503,7 @@ function LandingPage({ onLoginSuccess }) {
                   border: `2px solid ${colors.border}`,
                   fontSize: '16px',
                   backgroundColor: '#ffffff',
+                  color: '#000000',
                 }}
               />
             </div>
@@ -554,6 +564,7 @@ function LandingPage({ onLoginSuccess }) {
             </button>
           </div>
         </div>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} duration={toast.duration} />}
       </div>
     );
   }
@@ -624,6 +635,7 @@ function LandingPage({ onLoginSuccess }) {
                   border: `2px solid ${colors.border}`,
                   fontSize: '16px',
                   backgroundColor: '#ffffff',
+                  color: '#000000',
                 }}
               />
             </div>
@@ -649,6 +661,7 @@ function LandingPage({ onLoginSuccess }) {
                   border: `2px solid ${colors.border}`,
                   fontSize: '16px',
                   backgroundColor: '#ffffff',
+                  color: '#000000',
                 }}
               />
             </div>
@@ -673,6 +686,7 @@ function LandingPage({ onLoginSuccess }) {
                   border: `2px solid ${colors.border}`,
                   fontSize: '16px',
                   backgroundColor: '#ffffff',
+                  color: '#000000',
                 }}
               />
             </div>
@@ -699,6 +713,7 @@ function LandingPage({ onLoginSuccess }) {
                   border: `2px solid ${colors.border}`,
                   fontSize: '16px',
                   backgroundColor: '#ffffff',
+                  color: '#000000',
                 }}
               />
               <p style={{ fontSize: '12px', color: colors.textSecondary, marginTop: spacing.xs, marginBottom: 0 }}>
@@ -727,6 +742,7 @@ function LandingPage({ onLoginSuccess }) {
                   border: `2px solid ${colors.border}`,
                   fontSize: '16px',
                   backgroundColor: '#ffffff',
+                  color: '#000000',
                 }}
               />
             </div>
@@ -785,6 +801,7 @@ function LandingPage({ onLoginSuccess }) {
             All data is stored locally on your server.
           </div>
         </div>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} duration={toast.duration} />}
       </div>
     );
   }
@@ -839,6 +856,7 @@ function LandingPage({ onLoginSuccess }) {
               Back to Sign In
             </button>
           </div>
+          {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} duration={toast.duration} />}
         </div>
       );
     }
@@ -908,6 +926,7 @@ function LandingPage({ onLoginSuccess }) {
                   border: `2px solid ${colors.border}`,
                   fontSize: '16px',
                   backgroundColor: '#ffffff',
+                  color: '#000000',
                 }}
               />
             </div>
@@ -932,6 +951,7 @@ function LandingPage({ onLoginSuccess }) {
             </button>
           </form>
         </div>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={hideToast} duration={toast.duration} />}
       </div>
     );
   }

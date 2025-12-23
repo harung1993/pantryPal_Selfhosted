@@ -9,10 +9,18 @@ import {
   TextInput,
   RefreshControl,
   Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getItems, deleteItem } from '../services/api';
 import { colors, spacing, borderRadius, shadows } from '../styles/colors';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function HomeScreen({ navigation }) {
   const [items, setItems] = useState([]);
@@ -21,6 +29,7 @@ export default function HomeScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [groupBy, setGroupBy] = useState('none');
+  const [collapsedSections, setCollapsedSections] = useState(new Set());
 
   const loadItems = useCallback(async () => {
     try {
@@ -60,12 +69,35 @@ export default function HomeScreen({ navigation }) {
       grouped[key].push(item);
     });
 
-    const sections = Object.keys(grouped).map(key => ({
-      title: key,
-      data: grouped[key],
-    }));
+    const sections = Object.keys(grouped)
+      .filter(key => grouped[key].length > 0) // Hide empty groups
+      .map(key => ({
+        title: key,
+        data: grouped[key],
+        itemCount: grouped[key].length,
+      }));
 
     setGroupedItems(sections);
+  };
+
+  const toggleSection = (sectionTitle) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setCollapsedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(sectionTitle)) {
+        next.delete(sectionTitle);
+      } else {
+        next.add(sectionTitle);
+      }
+      return next;
+    });
+  };
+
+  const getVisibleSections = () => {
+    return groupedItems.map(section => ({
+      ...section,
+      data: collapsedSections.has(section.title) ? [] : section.data,
+    }));
   };
 
   useEffect(() => {
@@ -82,6 +114,31 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     groupItems(items, groupBy);
   }, [groupBy, items]);
+
+  // Collapse all sections by default when grouping changes
+  useEffect(() => {
+    if (groupBy !== 'none') {
+      const allTitles = groupedItems.map(s => s.title);
+      setCollapsedSections(new Set(allTitles));
+    } else {
+      setCollapsedSections(new Set());
+    }
+  }, [groupBy]);
+
+  // Auto-expand sections when search is active and has matches
+  useEffect(() => {
+    if (search && groupBy !== 'none') {
+      const sectionsWithMatches = groupedItems
+        .filter(section => section.itemCount > 0)
+        .map(section => section.title);
+
+      setCollapsedSections(prev => {
+        const next = new Set(prev);
+        sectionsWithMatches.forEach(title => next.delete(title));
+        return next;
+      });
+    }
+  }, [search, groupedItems, groupBy]);
 
   const getExpiryStatus = (expiryDate) => {
     if (!expiryDate) return null;
@@ -182,11 +239,21 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
-  const renderSectionHeader = ({ section: { title } }) => (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
-  );
+  const renderSectionHeader = ({ section: { title, itemCount } }) => {
+    const isCollapsed = collapsedSections.has(title);
+    return (
+      <TouchableOpacity
+        style={styles.sectionHeader}
+        onPress={() => toggleSection(title)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.sectionChevron}>{isCollapsed ? '▶' : '▼'}</Text>
+        <Text style={styles.sectionTitle}>
+          {title} ({itemCount || 0})
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -270,7 +337,7 @@ export default function HomeScreen({ navigation }) {
         />
       ) : (
         <SectionList
-          sections={groupedItems}
+          sections={getVisibleSections()}
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
           keyExtractor={(item) => item.id.toString()}
@@ -396,6 +463,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.sm,
     marginBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionChevron: {
+    fontSize: 14,
+    color: colors.textDark,
+    marginRight: spacing.sm,
   },
   sectionTitle: {
     fontSize: 16,

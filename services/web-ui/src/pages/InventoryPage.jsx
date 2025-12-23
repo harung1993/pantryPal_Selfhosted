@@ -1,35 +1,52 @@
 // Inventory page - full item list with filtering and bulk actions
-import { useState } from 'react';
-import { Download, Upload } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronRight, ChevronDown, Grid, List } from 'lucide-react';
 import ItemCard from '../components/ItemCard';
 import FilterPanel from '../components/FilterPanel';
 import BulkActions from '../components/BulkActions';
 import LoadingSpinner from '../components/LoadingSpinner';
-import Modal from '../components/Modal';
 import Alert from '../components/Alert';
-import { colors, spacing, borderRadius } from '../colors';
+import { getColors, spacing, borderRadius } from '../colors';
 import { useItems } from '../hooks/useItems';
 import { useLocations } from '../hooks/useLocations';
+import { exportToCSV } from '../utils/exportUtils';
+import { filterByExpiryStatus, sortByExpiry, getExpiryStatus, formatDate } from '../utils/dateUtils';
 import { downloadCSVTemplate, readCSVFile, validateImportedItems } from '../utils/exportUtils';
 import { filterByExpiryStatus, sortByExpiry } from '../utils/dateUtils';
 import { exportItemsCSV } from '../api';
 
-export function InventoryPage() {
-  const { items, loading, error, removeItems, addItem } = useItems();
+export function InventoryPage({ isDark, sidebarFilters = {} }) {
+  const colors = getColors(isDark);
+  const { items, loading, error, removeItems } = useItems();
   const { locations, categories } = useLocations();
   const [filters, setFilters] = useState({ expiryStatus: 'all' });
   const [selectedItems, setSelectedItems] = useState(new Set());
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [importError, setImportError] = useState(null);
   const [groupBy, setGroupBy] = useState('none');
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
+  const [viewMode, setViewMode] = useState('card'); // 'card' or 'list'
+
+  // Merge sidebar filters with local filters
+  const mergedFilters = { ...filters, ...sidebarFilters };
 
   // Apply filters
   const filteredItems = items.filter(item => {
-    if (filters.search && !item.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
-    if (filters.location && item.location !== filters.location) return false;
-    if (filters.category && item.category !== filters.category) return false;
-    if (filters.expiryStatus !== 'all') {
-      return filterByExpiryStatus([item], filters.expiryStatus).length > 0;
+    if (mergedFilters.search && !item.name.toLowerCase().includes(mergedFilters.search.toLowerCase())) return false;
+    if (mergedFilters.location && item.location !== mergedFilters.location) return false;
+    if (mergedFilters.category && item.category !== mergedFilters.category) return false;
+
+    // Handle expiry filter from sidebar
+    if (mergedFilters.filter === 'expiring') {
+      const status = getExpiryStatus(item.expiry_date);
+      return status === 'warning' || status === 'critical';
+    }
+    if (mergedFilters.filter === 'expired') {
+      const status = getExpiryStatus(item.expiry_date);
+      return status === 'expired';
+    }
+
+    // Handle expiry status from filter panel
+    if (mergedFilters.expiryStatus && mergedFilters.expiryStatus !== 'all') {
+      return filterByExpiryStatus([item], mergedFilters.expiryStatus).length > 0;
     }
     return true;
   });
@@ -49,6 +66,43 @@ export function InventoryPage() {
   const handleFilterChange = (newFilters) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
   };
+
+  const toggleGroup = (groupKey) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  };
+
+  // Collapse all groups by default when grouping changes
+  useEffect(() => {
+    if (groupBy !== 'none') {
+      const allGroupKeys = Object.keys(groupedItems);
+      setCollapsedGroups(new Set(allGroupKeys));
+    } else {
+      setCollapsedGroups(new Set());
+    }
+  }, [groupBy]);
+
+  // Auto-expand groups when search is active and has matches
+  useEffect(() => {
+    if (filters.search && groupBy !== 'none') {
+      const groupsWithMatches = Object.entries(groupedItems)
+        .filter(([_, items]) => items.length > 0)
+        .map(([key, _]) => key);
+
+      setCollapsedGroups(prev => {
+        const next = new Set(prev);
+        groupsWithMatches.forEach(key => next.delete(key));
+        return next;
+      });
+    }
+  }, [filters.search, groupedItems, groupBy]);
 
   const handleSelect = (item) => {
     setSelectedItems(prev => {
@@ -78,93 +132,12 @@ export function InventoryPage() {
     }
   };
 
-  const handleImport = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const importedItems = await readCSVFile(file);
-      const validation = validateImportedItems(importedItems);
-      
-      if (!validation.isValid) {
-        setImportError(validation.errors.join(', '));
-        return;
-      }
-
-      for (const item of importedItems) {
-        await addItem(item);
-      }
-      
-      setShowImportModal(false);
-      alert(`Successfully imported ${importedItems.length} items`);
-    } catch (err) {
-      setImportError(err.message);
-    }
-  };
-
   if (loading) return <LoadingSpinner />;
 
   return (
     <div style={{ padding: spacing.xl }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xl }}>
+      <div style={{ marginBottom: spacing.xl }}>
         <h1 style={{ margin: 0, fontSize: '32px', fontWeight: 'bold' }}>Inventory</h1>
-        <div style={{ display: 'flex', gap: spacing.md }}>
-          <button
-            onClick={() => downloadCSVTemplate()}
-            style={{
-              background: 'none',
-              border: `2px solid ${colors.border}`,
-              padding: `${spacing.md} ${spacing.lg}`,
-              borderRadius: borderRadius.md,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: spacing.sm,
-              fontSize: '14px',
-            }}
-          >
-            <Download size={18} />
-            Template
-          </button>
-          <button
-            onClick={() => setShowImportModal(true)}
-            style={{
-              background: colors.info,
-              border: 'none',
-              padding: `${spacing.md} ${spacing.lg}`,
-              borderRadius: borderRadius.md,
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: spacing.sm,
-              fontSize: '14px',
-              fontWeight: '500',
-            }}
-          >
-            <Upload size={18} />
-            Import CSV
-          </button>
-          <button
-            onClick={handleExport}
-            style={{
-              background: colors.success,
-              border: 'none',
-              padding: `${spacing.md} ${spacing.lg}`,
-              borderRadius: borderRadius.md,
-              color: 'white',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: spacing.sm,
-              fontSize: '14px',
-              fontWeight: '500',
-            }}
-          >
-            <Download size={18} />
-            Export CSV
-          </button>
-        </div>
       </div>
 
       {error && <Alert type="error" message={error} />}
@@ -174,38 +147,221 @@ export function InventoryPage() {
         onFilterChange={handleFilterChange}
         locations={locations}
         categories={categories}
+        isDark={isDark}
       />
 
-      <div style={{ display: 'flex', gap: spacing.md, marginBottom: spacing.lg }}>
-        <label style={{ fontSize: '14px', fontWeight: '500' }}>Group by:</label>
-        <select value={groupBy} onChange={(e) => setGroupBy(e.target.value)} style={{ padding: spacing.sm, borderRadius: borderRadius.sm }}>
-          <option value="none">None</option>
-          <option value="location">Location</option>
-          <option value="category">Category</option>
-        </select>
+      <div style={{ display: 'flex', gap: spacing.lg, marginBottom: spacing.lg, alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: spacing.md, alignItems: 'center' }}>
+          <label style={{ fontSize: '14px', fontWeight: '500', color: colors.textPrimary }}>Group by:</label>
+          <select
+            value={groupBy}
+            onChange={(e) => setGroupBy(e.target.value)}
+            style={{
+              padding: spacing.sm,
+              borderRadius: borderRadius.sm,
+              border: `1px solid ${colors.border}`,
+              backgroundColor: colors.card,
+              color: colors.textPrimary,
+            }}
+          >
+            <option value="none">None</option>
+            <option value="location">Location</option>
+            <option value="category">Category</option>
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', gap: spacing.xs }}>
+          <button
+            onClick={() => setViewMode('card')}
+            style={{
+              padding: spacing.sm,
+              border: `1px solid ${colors.border}`,
+              borderRadius: borderRadius.sm,
+              backgroundColor: viewMode === 'card' ? colors.primary : colors.card,
+              color: viewMode === 'card' ? colors.textPrimary : colors.textSecondary,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing.xs,
+            }}
+            title="Card view"
+          >
+            <Grid size={18} />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            style={{
+              padding: spacing.sm,
+              border: `1px solid ${colors.border}`,
+              borderRadius: borderRadius.sm,
+              backgroundColor: viewMode === 'list' ? colors.primary : colors.card,
+              color: viewMode === 'list' ? colors.textPrimary : colors.textSecondary,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: spacing.xs,
+            }}
+            title="List view"
+          >
+            <List size={18} />
+          </button>
+        </div>
       </div>
 
-      {Object.entries(groupedItems).map(([group, groupItems]) => (
-        <div key={group} style={{ marginBottom: spacing.xxl }}>
-          {groupBy !== 'none' && (
-            <h2 style={{ marginBottom: spacing.lg, fontSize: '20px', fontWeight: 'bold', color: colors.textSecondary }}>
-              {group} ({groupItems.length})
-            </h2>
-          )}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: spacing.lg }}>
-            {groupItems.map(item => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                isSelected={selectedItems.has(item.id)}
-                onSelect={handleSelect}
-                onEdit={() => {}}
-                onDelete={() => removeItems([item.id])}
-              />
-            ))}
-          </div>
-        </div>
-      ))}
+      {Object.entries(groupedItems)
+        .filter(([_, groupItems]) => groupItems.length > 0)
+        .map(([group, groupItems]) => {
+          const isCollapsed = collapsedGroups.has(group);
+          const Icon = isCollapsed ? ChevronRight : ChevronDown;
+
+          return (
+            <div key={group} style={{ marginBottom: spacing.xxl }}>
+              {groupBy !== 'none' && (
+                <div
+                  onClick={() => toggleGroup(group)}
+                  style={{
+                    marginBottom: spacing.lg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: spacing.sm,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    padding: spacing.md,
+                    borderRadius: borderRadius.md,
+                    transition: 'background-color 0.2s',
+                    backgroundColor: isCollapsed ? colors.background : 'transparent',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = colors.background}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isCollapsed ? colors.background : 'transparent'}
+                >
+                  <Icon size={20} color={colors.textSecondary} />
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: colors.textSecondary }}>
+                    {group} ({groupItems.length})
+                  </h2>
+                </div>
+              )}
+              {!isCollapsed && (
+                viewMode === 'card' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: spacing.lg }}>
+                    {groupItems.map(item => (
+                      <ItemCard
+                        key={item.id}
+                        item={item}
+                        isSelected={selectedItems.has(item.id)}
+                        onSelect={handleSelect}
+                        onEdit={() => {}}
+                        onDelete={() => removeItems([item.id])}
+                        isDark={isDark}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    backgroundColor: colors.card,
+                    borderRadius: borderRadius.lg,
+                    overflow: 'hidden',
+                    border: `1px solid ${colors.border}`,
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ backgroundColor: colors.background }}>
+                          <th style={{ padding: spacing.md, textAlign: 'left', fontSize: '14px', fontWeight: '600', color: colors.textSecondary, borderBottom: `1px solid ${colors.border}` }}>Name</th>
+                          <th style={{ padding: spacing.md, textAlign: 'left', fontSize: '14px', fontWeight: '600', color: colors.textSecondary, borderBottom: `1px solid ${colors.border}` }}>Location</th>
+                          <th style={{ padding: spacing.md, textAlign: 'left', fontSize: '14px', fontWeight: '600', color: colors.textSecondary, borderBottom: `1px solid ${colors.border}` }}>Category</th>
+                          <th style={{ padding: spacing.md, textAlign: 'left', fontSize: '14px', fontWeight: '600', color: colors.textSecondary, borderBottom: `1px solid ${colors.border}` }}>Expiry</th>
+                          <th style={{ padding: spacing.md, textAlign: 'center', fontSize: '14px', fontWeight: '600', color: colors.textSecondary, borderBottom: `1px solid ${colors.border}` }}>Quantity</th>
+                          <th style={{ padding: spacing.md, textAlign: 'center', fontSize: '14px', fontWeight: '600', color: colors.textSecondary, borderBottom: `1px solid ${colors.border}` }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {groupItems.map(item => {
+                          const expiryColor = getExpiryStatus(item.expiry_date) === 'expired' ? colors.danger :
+                                             getExpiryStatus(item.expiry_date) === 'critical' ? colors.warning : colors.info;
+                          const expiryBadge = item.expiry_date ? formatDate(item.expiry_date) : 'N/A';
+
+                          return (
+                            <tr
+                              key={item.id}
+                              onClick={() => handleSelect(item)}
+                              style={{
+                                backgroundColor: selectedItems.has(item.id) ? colors.primary + '10' : 'transparent',
+                                cursor: 'pointer',
+                                transition: 'background 0.2s',
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = selectedItems.has(item.id) ? colors.primary + '20' : colors.background}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = selectedItems.has(item.id) ? colors.primary + '10' : 'transparent'}
+                            >
+                              <td style={{ padding: spacing.md, borderBottom: `1px solid ${colors.border}`, color: colors.textPrimary, fontWeight: '500' }}>
+                                {item.name}
+                              </td>
+                              <td style={{ padding: spacing.md, borderBottom: `1px solid ${colors.border}`, color: colors.textSecondary }}>
+                                {item.location || 'N/A'}
+                              </td>
+                              <td style={{ padding: spacing.md, borderBottom: `1px solid ${colors.border}`, color: colors.textSecondary }}>
+                                {item.category || 'N/A'}
+                              </td>
+                              <td style={{ padding: spacing.md, borderBottom: `1px solid ${colors.border}` }}>
+                                <span style={{
+                                  padding: `${spacing.xs} ${spacing.sm}`,
+                                  backgroundColor: expiryColor + '20',
+                                  color: expiryColor,
+                                  borderRadius: borderRadius.sm,
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                }}>
+                                  {expiryBadge}
+                                </span>
+                              </td>
+                              <td style={{ padding: spacing.md, borderBottom: `1px solid ${colors.border}`, textAlign: 'center', color: colors.textPrimary, fontWeight: '600' }}>
+                                {item.quantity || 1}
+                              </td>
+                              <td style={{ padding: spacing.md, borderBottom: `1px solid ${colors.border}`, textAlign: 'center' }}>
+                                <div style={{ display: 'flex', gap: spacing.sm, justifyContent: 'center' }}>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      color: colors.textSecondary,
+                                      padding: spacing.xs,
+                                    }}
+                                    title="Edit item"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeItems([item.id]);
+                                    }}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      color: colors.danger,
+                                      padding: spacing.xs,
+                                    }}
+                                    title="Delete item"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              )}
+            </div>
+          );
+        })
+      }
 
       {sortedItems.length === 0 && (
         <div style={{ textAlign: 'center', padding: spacing.xxxl, color: colors.textSecondary }}>
@@ -219,17 +375,6 @@ export function InventoryPage() {
         onExport={handleExport}
         onClear={() => setSelectedItems(new Set())}
       />
-
-      <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title="Import Items from CSV">
-        {importError && <Alert type="error" message={importError} onClose={() => setImportError(null)} />}
-        <div style={{ marginBottom: spacing.lg }}>
-          <p>Upload a CSV file with your pantry items. Make sure it includes at least a "Name" column.</p>
-          <p style={{ fontSize: '14px', color: colors.textSecondary, marginTop: spacing.sm }}>
-            Download the template first if you need a reference format.
-          </p>
-        </div>
-        <input type="file" accept=".csv" onChange={handleImport} style={{ width: '100%', padding: spacing.md }} />
-      </Modal>
     </div>
   );
 }
